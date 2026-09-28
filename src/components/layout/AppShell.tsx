@@ -34,8 +34,6 @@ interface AppShellProps {
     highRiskCount: number;
     followUpsDueCount: number;
   };
-  onQuickLoadDemo?: () => void;
-  onQuickLoadUpdate?: () => void;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -43,8 +41,6 @@ export const AppShell: React.FC<AppShellProps> = ({
   onTabChange,
   children,
   stats = { totalStudents: 0, highRiskCount: 0, followUpsDueCount: 0 },
-  onQuickLoadDemo,
-  onQuickLoadUpdate,
 }) => {
   const navItems = [
     {
@@ -151,33 +147,6 @@ export const AppShell: React.FC<AppShellProps> = ({
               </button>
             );
           })}
-
-          {/* Quick Demo Helpers Section in Sidebar */}
-          <div className="pt-6 pb-2 px-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span>14-Step Demo Flow</span>
-            </div>
-            <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/60 text-xs space-y-2">
-              <p className="text-slate-400 text-[11px]">
-                Test end-to-end flow with sample institutional student datasets:
-              </p>
-              <button
-                onClick={onQuickLoadDemo}
-                className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-400/30 font-medium transition-colors text-[11px]"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>1. Load Baseline Data</span>
-              </button>
-              <button
-                onClick={onQuickLoadUpdate}
-                className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/30 font-medium transition-colors text-[11px]"
-              >
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>2. Load Follow-up Update</span>
-              </button>
-            </div>
-          </div>
         </nav>
 
         {/* Footer User Info */}

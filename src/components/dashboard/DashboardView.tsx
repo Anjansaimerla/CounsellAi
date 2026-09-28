@@ -24,7 +24,6 @@ interface DashboardViewProps {
   students: CompleteStudentRecord[];
   onSelectStudent: (registerNumber: string) => void;
   onNavigateToTab: (tab: any) => void;
-  onOpenQuickDemo: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -32,7 +31,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   students,
   onSelectStudent,
   onNavigateToTab,
-  onOpenQuickDemo,
 }) => {
   // Sort high and critical risk students first
   const highRiskStudents = students
@@ -58,20 +56,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             deterministic risk scores, identify students needing early intervention, and generate
             AI-assisted counselling briefs.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex items-center justify-center">
             <button
               onClick={() => onNavigateToTab('upload')}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
+              className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
             >
               <UploadCloud className="w-4 h-4" />
               <span>Upload Student CSV</span>
-            </button>
-            <button
-              onClick={onOpenQuickDemo}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium text-sm border border-slate-200 transition-colors flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <span>Load 5-Student Demo Cohort</span>
             </button>
           </div>
         </div>

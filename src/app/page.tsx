@@ -24,8 +24,6 @@ import {
 import {
   CsvParseResult,
   parseAndValidateStudentCsv,
-  generateSampleCsvContent,
-  generateFollowUpCsvContent,
 } from '@/lib/csv/csv-parser';
 
 export default function HomePage() {
@@ -80,36 +78,6 @@ export default function HomePage() {
       behaviourRecords: result.validBehaviourRecords,
     });
     refreshData();
-  };
-
-  // 1-Click Demo Baseline Cohort
-  const handleQuickLoadDemo = () => {
-    const csv = generateSampleCsvContent();
-    const result = parseAndValidateStudentCsv(csv, 'Mid-Term 1 (Sep 2026)');
-    store.importData({
-      filename: 'sample_baseline_cohort.csv',
-      snapshotLabel: 'Mid-Term 1 (Sep 2026)',
-      students: result.validStudents,
-      academicRecords: result.validAcademicRecords,
-      behaviourRecords: result.validBehaviourRecords,
-    });
-    refreshData();
-    setCurrentTab('dashboard');
-  };
-
-  // 1-Click Demo Follow-Up Update Cohort
-  const handleQuickLoadUpdate = () => {
-    const csv = generateFollowUpCsvContent();
-    const result = parseAndValidateStudentCsv(csv, 'Mid-Term 2 (Nov 2026)');
-    store.importData({
-      filename: 'sample_followup_cohort.csv',
-      snapshotLabel: 'Mid-Term 2 (Nov 2026)',
-      students: result.validStudents,
-      academicRecords: result.validAcademicRecords,
-      behaviourRecords: result.validBehaviourRecords,
-    });
-    refreshData();
-    setCurrentTab('improvement');
   };
 
   // Handle Save Counselling Session
@@ -175,8 +143,6 @@ export default function HomePage() {
         highRiskCount: stats.highRiskCount + stats.criticalRiskCount,
         followUpsDueCount: stats.followUpsDueCount,
       }}
-      onQuickLoadDemo={handleQuickLoadDemo}
-      onQuickLoadUpdate={handleQuickLoadUpdate}
     >
       {/* 1. Dashboard Tab */}
       {currentTab === 'dashboard' && (
@@ -185,7 +151,6 @@ export default function HomePage() {
           students={students}
           onSelectStudent={(regNo) => setSelectedStudentRegNo(regNo)}
           onNavigateToTab={(tab) => setCurrentTab(tab)}
-          onOpenQuickDemo={handleQuickLoadDemo}
         />
       )}
 
@@ -222,7 +187,7 @@ export default function HomePage() {
         <ImprovementView
           comparisons={comparisons}
           onSelectStudent={(regNo) => setSelectedStudentRegNo(regNo)}
-          onLoadUpdateDataset={handleQuickLoadUpdate}
+          onNavigateToUpload={() => setCurrentTab('upload')}
           totalStudentsCount={stats.totalStudents}
         />
       )}
@@ -248,7 +213,6 @@ export default function HomePage() {
             store.clearAll();
             refreshData();
           }}
-          onReloadDemo={handleQuickLoadDemo}
         />
       )}
 

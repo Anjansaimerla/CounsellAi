@@ -15,8 +15,7 @@ import {
 } from 'lucide-react';
 import {
   parseAndValidateStudentCsv,
-  generateSampleCsvContent,
-  generateFollowUpCsvContent,
+  generateCsvTemplate,
   CsvParseResult,
 } from '@/lib/csv/csv-parser';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
@@ -36,7 +35,7 @@ export const CsvUploadView: React.FC<CsvUploadViewProps> = ({
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [snapshotLabel, setSnapshotLabel] = useState('Mid-Term 1 (Sep 2026)');
+  const [snapshotLabel, setSnapshotLabel] = useState('Mid-Term 1');
   const [parseResult, setParseResult] = useState<CsvParseResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [importDone, setImportDone] = useState(false);
@@ -85,7 +84,7 @@ export const CsvUploadView: React.FC<CsvUploadViewProps> = ({
   };
 
   const handleDownloadSample = () => {
-    const csvContent = generateSampleCsvContent();
+    const csvContent = generateCsvTemplate();
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -101,18 +100,6 @@ export const CsvUploadView: React.FC<CsvUploadViewProps> = ({
     const filename = selectedFile?.name || 'student_cohort_import.csv';
     onImportSuccess(parseResult, snapshotLabel, filename);
     setImportDone(true);
-  };
-
-  const handleLoadDemoCohort = () => {
-    setSnapshotLabel('Mid-Term 1 (Sep 2026)');
-    const csvText = generateSampleCsvContent();
-    processCsvText(csvText, 'demo_cohort_midterm1.csv');
-  };
-
-  const handleLoadFollowUpSnapshot = () => {
-    setSnapshotLabel('Mid-Term 2 (Nov 2026)');
-    const csvText = generateFollowUpCsvContent();
-    processCsvText(csvText, 'demo_cohort_midterm2_followup.csv');
   };
 
   return (
@@ -195,27 +182,6 @@ export const CsvUploadView: React.FC<CsvUploadViewProps> = ({
                 <p className="text-xs text-slate-500 mt-1">
                   Required columns: register_number, student_name, department, year, attendance_percentage, sgpa, backlog_count
                 </p>
-              </div>
-
-              {/* Demo Load Buttons */}
-              <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-slate-500 font-medium">Instant Test Cohorts:</span>
-                <button
-                  type="button"
-                  onClick={handleLoadDemoCohort}
-                  className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-medium transition-colors flex items-center gap-1"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>1. Load Baseline Cohort (5 Students)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLoadFollowUpSnapshot}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium transition-colors flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>2. Load Follow-up Update (Post-Intervention)</span>
-                </button>
               </div>
             </CardContent>
           </Card>

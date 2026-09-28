@@ -1,7 +1,6 @@
-
 import { calculateStudentRisk } from '../src/lib/risk/risk-engine';
 import { DEFAULT_RISK_CONFIG } from '../src/lib/risk/risk-config';
-import { parseAndValidateStudentCsv, generateSampleCsvContent, generateFollowUpCsvContent } from '../src/lib/csv/csv-parser';
+import { parseAndValidateStudentCsv } from '../src/lib/csv/csv-parser';
 import { store } from '../src/lib/storage/store';
 import { AcademicRecord, Student, BehaviourRecord, CompleteStudentRecord } from '../src/types';
 
@@ -145,7 +144,13 @@ async function runSystemDiagnostics() {
   // 3. CSV PARSING & VALIDATION ENGINE TESTS
   // -------------------------------------------------------------
   console.log('\n--- 3. CSV INGESTION & VALIDATION TESTS ---');
-  const sampleCsv = generateSampleCsvContent();
+  const sampleCsv = `register_number,student_name,department,program,year,section,semester,attendance_percentage,sgpa,cgpa,backlog_count,backlog_subjects
+23CS101,Aarav Sharma,CSE,B.Tech,3,A,5,56.5,5.4,7.1,3,"[""OS"", ""Maths III""]"
+23CS102,Priya Nair,CSE,B.Tech,3,A,5,71.0,6.8,7.5,1,"[""Maths III""]"
+23EC201,Karthik Reddy,ECE,B.Tech,2,B,3,88.0,8.9,8.7,0,"[]"
+23AI301,Sneha Verma,CSE-AIML,B.Tech,3,A,5,58.0,5.8,7.2,2,"[""Linear Algebra""]"
+23IT401,Rohan Gupta,IT,B.Tech,2,A,4,91.5,9.1,9.0,0,"[]"`;
+
   const parseResult = parseAndValidateStudentCsv(sampleCsv, 'Mid-Term 1 (Sep 2026)');
 
   assertTest(
@@ -214,7 +219,13 @@ async function runSystemDiagnostics() {
   // 5. BEFORE/AFTER LONGITUDINAL IMPROVEMENT COMPARISON
   // -------------------------------------------------------------
   console.log('\n--- 5. BEFORE/AFTER IMPROVEMENT ANALYSIS TEST ---');
-  const followUpCsv = generateFollowUpCsvContent();
+  const followUpCsv = `register_number,student_name,department,program,year,section,semester,attendance_percentage,sgpa,cgpa,backlog_count,backlog_subjects
+23CS101,Aarav Sharma,CSE,B.Tech,3,A,5,78.0,6.9,7.3,1,"[""Maths III""]"
+23CS102,Priya Nair,CSE,B.Tech,3,A,5,84.5,7.9,7.8,0,"[]"
+23EC201,Karthik Reddy,ECE,B.Tech,2,B,3,90.0,9.2,8.8,0,"[]"
+23AI301,Sneha Verma,CSE-AIML,B.Tech,3,A,5,79.5,7.3,7.4,0,"[]"
+23IT401,Rohan Gupta,IT,B.Tech,2,A,4,92.0,9.3,9.1,0,"[]"`;
+
   const followUpResult = parseAndValidateStudentCsv(followUpCsv, 'Mid-Term 2 (Nov 2026)');
 
   store.importData({

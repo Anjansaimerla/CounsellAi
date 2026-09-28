@@ -15,19 +15,20 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  UploadCloud,
 } from 'lucide-react';
 
 interface ImprovementViewProps {
   comparisons: ImprovementComparison[];
   onSelectStudent: (registerNumber: string) => void;
-  onLoadUpdateDataset: () => void;
+  onNavigateToUpload: () => void;
   totalStudentsCount: number;
 }
 
 export const ImprovementView: React.FC<ImprovementViewProps> = ({
   comparisons,
   onSelectStudent,
-  onLoadUpdateDataset,
+  onNavigateToUpload,
   totalStudentsCount,
 }) => {
   const [selectedComparison, setSelectedComparison] = useState<ImprovementComparison | null>(null);
@@ -89,21 +90,13 @@ export const ImprovementView: React.FC<ImprovementViewProps> = ({
           </p>
         </div>
 
-        {comparisons.length > 0 ? (
+        {comparisons.length > 0 && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-semibold text-emerald-300 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>
               {improvedCount} of {comparisons.length} evaluated students showing positive recovery
             </span>
           </div>
-        ) : (
-          <button
-            onClick={onLoadUpdateDataset}
-            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors flex items-center gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Load Follow-up Data Snapshot (Step 12-14)</span>
-          </button>
         )}
       </div>
 
@@ -114,18 +107,18 @@ export const ImprovementView: React.FC<ImprovementViewProps> = ({
               <TrendingUp className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-base text-slate-900">
-              No Snapshot Comparison Available Yet
+              Multiple Term Snapshots Needed
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Improvement tracking requires at least two snapshots (e.g. Mid-Term 1 Baseline and Mid-Term 2 Follow-Up).
-              Click below to load the second comparison dataset and immediately see measurable before-and-after results.
+              Improvement tracking compares student performance across terms (e.g. Mid-Term 1 vs. Mid-Term 2).
+              Upload a subsequent academic snapshot CSV to automatically generate side-by-side progress metrics and recovery summaries.
             </p>
             <button
-              onClick={onLoadUpdateDataset}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors inline-flex items-center gap-2 shadow-sm"
+              onClick={onNavigateToUpload}
+              className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors inline-flex items-center gap-2 shadow-sm"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Load Follow-up Update Dataset</span>
+              <UploadCloud className="w-4 h-4" />
+              <span>Upload Next Term CSV Snapshot</span>
             </button>
           </CardContent>
         </Card>

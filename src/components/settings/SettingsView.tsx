@@ -19,14 +19,12 @@ interface SettingsViewProps {
   currentConfig: RiskThresholdConfig;
   onUpdateConfig: (config: Partial<RiskThresholdConfig>) => void;
   onClearAllData: () => void;
-  onReloadDemo: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentConfig,
   onUpdateConfig,
   onClearAllData,
-  onReloadDemo,
 }) => {
   const [config, setConfig] = useState<RiskThresholdConfig>(currentConfig);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -213,17 +211,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <Card className="border-rose-200/80">
         <CardHeader>
           <CardTitle className="text-rose-900">Database & State Management</CardTitle>
-          <CardDescription>Reset or clear data for fresh test runs</CardDescription>
+          <CardDescription>Reset or clear stored data across browser sessions</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3 text-xs">
-          <button
-            onClick={onReloadDemo}
-            className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold transition-colors flex items-center gap-1.5"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reload Baseline Demo Cohort</span>
-          </button>
-
           <button
             onClick={() => {
               if (confirm('Are you sure you want to clear all imported students and records?')) {
