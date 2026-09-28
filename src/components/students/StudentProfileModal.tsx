@@ -34,7 +34,9 @@ import {
   MessageSquarePlus,
   HelpCircle,
   ArrowRight,
+  Printer,
 } from 'lucide-react';
+import { PrintableInterventionReport } from './PrintableInterventionReport';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -67,6 +69,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
   const [showSubjectDetails, setShowSubjectDetails] = useState(false);
+  const [showPrintReport, setShowPrintReport] = useState(false);
 
   // In-line Counselling Session Form State (Section 3.1 & 3.3 of updation.md)
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -254,10 +257,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-2">
             <span className="text-[11px] text-slate-300 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
               Trend: <strong className="text-white">{riskAssessment.trend}</strong>
             </span>
+            <button
+              type="button"
+              onClick={() => setShowPrintReport(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all flex items-center gap-1.5 shadow-sm text-xs"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print / Export Summary</span>
+            </button>
           </div>
         </div>
 
@@ -779,6 +790,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Printable Single-Page Official Intervention Summary Report */}
+      <PrintableInterventionReport
+        isOpen={showPrintReport}
+        onClose={() => setShowPrintReport(false)}
+        record={record}
+        aiBrief={aiBrief}
+        latestActionPlan={actionItems}
+        issueIdentified={issueIdentified}
+        adviceGiven={adviceGiven}
+        followUpDate={followUpDate}
+      />
     </Modal>
   );
 };

@@ -13,11 +13,13 @@ import {
   Sparkles,
   Database,
   FileSpreadsheet,
+  UserX,
 } from 'lucide-react';
 
 export type NavTab =
   | 'dashboard'
   | 'students'
+  | 'manage'
   | 'upload'
   | 'followups'
   | 'improvement'
@@ -58,6 +60,12 @@ export const AppShell: React.FC<AppShellProps> = ({
       badge: stats.highRiskCount > 0 ? `${stats.highRiskCount} High` : undefined,
       badgeColor: 'bg-rose-100 text-rose-700',
       description: 'Directory & Risk Signals',
+    },
+    {
+      id: 'manage' as NavTab,
+      label: 'Manage & Delete',
+      icon: UserX,
+      description: 'Search & Safe Student Deletion',
     },
     {
       id: 'upload' as NavTab,

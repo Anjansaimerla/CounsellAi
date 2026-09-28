@@ -535,6 +535,38 @@ class CounsellStore {
     };
   }
 
+  /**
+   * Permanently delete a student and cascade cleanup all associated records
+   */
+  public deleteStudent(registerNumber: string): boolean {
+    const regUpper = registerNumber.toUpperCase().trim();
+    if (!this.students.has(regUpper)) return false;
+
+    // 1. Remove student entity
+    this.students.delete(regUpper);
+
+    // 2. Cascade delete academic records
+    this.academicRecords = this.academicRecords.filter(
+      (a) => a.register_number.toUpperCase().trim() !== regUpper
+    );
+
+    // 3. Cascade delete behaviour record
+    this.behaviourRecords.delete(regUpper);
+
+    // 4. Cascade delete counselling sessions
+    this.counsellingSessions = this.counsellingSessions.filter(
+      (s) => s.register_number.toUpperCase().trim() !== regUpper
+    );
+
+    // 5. Cascade delete follow up tasks
+    this.followUps = this.followUps.filter(
+      (f) => f.register_number.toUpperCase().trim() !== regUpper
+    );
+
+    this.saveToLocalStorage();
+    return true;
+  }
+
   public clearAll() {
     this.students.clear();
     this.academicRecords = [];

@@ -8,6 +8,7 @@ import { CsvUploadView } from '@/components/upload/CsvUploadView';
 import { FollowUpsView } from '@/components/followups/FollowUpsView';
 import { ImprovementView } from '@/components/improvement/ImprovementView';
 import { SettingsView } from '@/components/settings/SettingsView';
+import { StudentManagementView } from '@/components/students/StudentManagementView';
 import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { CounsellingSessionModal } from '@/components/counselling/CounsellingSessionModal';
 import { store, DashboardStats } from '@/lib/storage/store';
@@ -149,6 +150,12 @@ export default function HomePage() {
     refreshData();
   };
 
+  // Handle Delete Student Record
+  const handleDeleteStudent = (registerNumber: string) => {
+    store.deleteStudent(registerNumber);
+    refreshData();
+  };
+
   // Selected student record for profile modal
   const activeStudentRecord = selectedStudentRegNo
     ? store.getCompleteStudentRecord(selectedStudentRegNo)
@@ -220,7 +227,16 @@ export default function HomePage() {
         />
       )}
 
-      {/* 6. Settings & Risk Engine Configuration Tab */}
+      {/* 6. Manage & Delete Students Tab */}
+      {currentTab === 'manage' && (
+        <StudentManagementView
+          students={students}
+          onDeleteStudent={handleDeleteStudent}
+          onSelectStudent={(regNo) => setSelectedStudentRegNo(regNo)}
+        />
+      )}
+
+      {/* 7. Settings & Risk Engine Configuration Tab */}
       {currentTab === 'settings' && (
         <SettingsView
           currentConfig={store.getRiskConfig()}
