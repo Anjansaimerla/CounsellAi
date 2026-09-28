@@ -110,7 +110,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by student name (e.g. Aarav), register number (e.g. 23CS101), department (CSE), year..."
+              placeholder="Search by student name, register number (e.g. 23CS101), department (e.g. CSE), year..."
               className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium transition-all"
               autoFocus
             />

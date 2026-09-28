@@ -77,14 +77,14 @@ async function runSystemDiagnostics() {
   // Case A: Critical Risk Student (Attendance < 60% (+3), SGPA drop (+2), Backlogs >= 2 (+3), Internal < 50% (+2) = 10 pts)
   const criticalAcademic: AcademicRecord = {
     id: 'acad_crit',
-    register_number: '23CS101',
-    snapshot_label: 'Mid-Term 1',
+    register_number: 'TEST_REG_001',
+    snapshot_label: 'Snapshot_1',
     semester: 5,
     attendance_percentage: 55.0, // < 60 -> +3 pts
     sgpa: 5.4,
     cgpa: 7.1, // Drop > 0.5 compared to CGPA -> +2 pts
     backlog_count: 3, // >= 2 -> +3 pts
-    backlog_subjects: ['OS', 'Maths III', 'Data Structures'],
+    backlog_subjects: ['Subject_A', 'Subject_B', 'Subject_C'],
     internal_assessment_marks: { obtained: 22, maximum: 60, percentage: 36.6 }, // < 50% -> +2 pts
     assignment_performance: 48, // < 60% -> +2 pts
     recorded_at: new Date().toISOString(),
@@ -100,14 +100,14 @@ async function runSystemDiagnostics() {
   // Case B: Moderate Risk Student (Attendance 71% (+2), 1 Backlog (+1) = 3 pts)
   const moderateAcademic: AcademicRecord = {
     id: 'acad_mod',
-    register_number: '23CS102',
-    snapshot_label: 'Mid-Term 1',
+    register_number: 'TEST_REG_002',
+    snapshot_label: 'Snapshot_1',
     semester: 5,
     attendance_percentage: 71.0, // < 75 -> +2 pts
     sgpa: 7.2,
     cgpa: 7.5,
     backlog_count: 1, // 1 backlog -> +1 pt
-    backlog_subjects: ['Maths III'],
+    backlog_subjects: ['Subject_B'],
     internal_assessment_marks: { obtained: 45, maximum: 60, percentage: 75 },
     assignment_performance: 75,
     recorded_at: new Date().toISOString(),
@@ -123,8 +123,8 @@ async function runSystemDiagnostics() {
   // Case C: Low Risk / Clean Student
   const lowAcademic: AcademicRecord = {
     id: 'acad_low',
-    register_number: '23EC201',
-    snapshot_label: 'Mid-Term 1',
+    register_number: 'TEST_REG_003',
+    snapshot_label: 'Snapshot_1',
     semester: 3,
     attendance_percentage: 90.0,
     sgpa: 8.9,
@@ -145,27 +145,27 @@ async function runSystemDiagnostics() {
   // -------------------------------------------------------------
   console.log('\n--- 3. CSV INGESTION & VALIDATION TESTS ---');
   const sampleCsv = `register_number,student_name,department,program,year,section,semester,attendance_percentage,sgpa,cgpa,backlog_count,backlog_subjects
-23CS101,Aarav Sharma,CSE,B.Tech,3,A,5,56.5,5.4,7.1,3,"[""OS"", ""Maths III""]"
-23CS102,Priya Nair,CSE,B.Tech,3,A,5,71.0,6.8,7.5,1,"[""Maths III""]"
-23EC201,Karthik Reddy,ECE,B.Tech,2,B,3,88.0,8.9,8.7,0,"[]"
-23AI301,Sneha Verma,CSE-AIML,B.Tech,3,A,5,58.0,5.8,7.2,2,"[""Linear Algebra""]"
-23IT401,Rohan Gupta,IT,B.Tech,2,A,4,91.5,9.1,9.0,0,"[]"`;
+TEST_REG_001,Student_001,Dept_A,B.Tech,3,A,5,56.5,5.4,7.1,3,"[""Subject_A"", ""Subject_B""]"
+TEST_REG_002,Student_002,Dept_A,B.Tech,3,A,5,71.0,6.8,7.5,1,"[""Subject_B""]"
+TEST_REG_003,Student_003,Dept_B,B.Tech,2,B,3,88.0,8.9,8.7,0,"[]"
+TEST_REG_004,Student_004,Dept_C,B.Tech,3,A,5,58.0,5.8,7.2,2,"[""Subject_C""]"
+TEST_REG_005,Student_005,Dept_D,B.Tech,2,A,4,91.5,9.1,9.0,0,"[]"`;
 
-  const parseResult = parseAndValidateStudentCsv(sampleCsv, 'Mid-Term 1 (Sep 2026)');
+  const parseResult = parseAndValidateStudentCsv(sampleCsv, 'Snapshot_1');
 
   assertTest(
     'CSV Ingestion Parsed Successfully',
     parseResult.validStudents.length === 5 && parseResult.errors.length === 0,
-    `Parsed ${parseResult.validStudents.length} students with 0 errors`
+    `Parsed ${parseResult.validStudents.length} records with 0 errors`
   );
 
   // Test invalid CSV row error detection
-  const corruptCsv = `register_number,student_name,department,year,attendance_percentage,sgpa\n,Invalid Student,CSE,3,120,15.5`;
-  const corruptResult = parseAndValidateStudentCsv(corruptCsv, 'Test Invalid');
+  const corruptCsv = `register_number,student_name,department,year,attendance_percentage,sgpa\n,Invalid_Row,Dept_A,3,120,15.5`;
+  const corruptResult = parseAndValidateStudentCsv(corruptCsv, 'Snapshot_Invalid');
   assertTest(
     'Zod Validation Detects Invalid Attendance (>100%) and SGPA (>10)',
     corruptResult.errors.length > 0,
-    `Caught ${corruptResult.errors.length} validation errors on bad input`
+    `Caught ${corruptResult.errors.length} validation errors on invalid row`
   );
 
   // -------------------------------------------------------------
@@ -173,25 +173,25 @@ async function runSystemDiagnostics() {
   // -------------------------------------------------------------
   console.log('\n--- 4. COUNSELLING SESSION & ACTION PLAN WORKFLOW ---');
   store.importData({
-    filename: 'test_baseline.csv',
-    snapshotLabel: 'Mid-Term 1 (Sep 2026)',
+    filename: 'test_snapshot_1.csv',
+    snapshotLabel: 'Snapshot_1',
     students: parseResult.validStudents,
     academicRecords: parseResult.validAcademicRecords,
     behaviourRecords: parseResult.validBehaviourRecords,
   });
 
   const session = store.recordCounsellingSession({
-    register_number: '23CS101',
+    register_number: 'TEST_REG_001',
     session_date: new Date().toISOString(),
-    counsellor_id: 'counsellor_1',
-    counsellor_name: 'Dr. S. Mehta',
+    counsellor_id: 'counsellor_test_1',
+    counsellor_name: 'Counsellor_Staff_1',
     counselling_type: 'ACADEMIC',
-    issue_identified: 'Severe attendance deficit & OS/Maths backlogs',
-    counsellor_observation: 'Student receptive to structured revision schedule',
-    advice_given: 'Attend lab doubt sessions and daily morning attendance tracking',
+    issue_identified: 'Attendance deficit and backlog clearance requirement',
+    counsellor_observation: 'Action targets agreed upon',
+    advice_given: 'Attend structured revision sessions and monitor attendance',
     action_plan: [
-      { id: 'act_1', action: 'Daily attendance in 8:30 AM lectures', target: '90%', deadline: '2026-10-15', completed: false },
-      { id: 'act_2', action: 'Attend remedial Maths doubt clearing', target: '2 sessions/week', deadline: '2026-10-15', completed: false },
+      { id: 'act_1', action: 'Daily attendance tracking', target: '90%', deadline: '2026-10-15', completed: false },
+      { id: 'act_2', action: 'Attend remedial problem solving', target: '2 sessions/week', deadline: '2026-10-15', completed: false },
     ],
     follow_up_date: '2026-10-15',
     follow_up_status: 'PENDING',
@@ -206,7 +206,7 @@ async function runSystemDiagnostics() {
 
   // Test toggling action plan completion
   store.toggleActionPlanItem(session.id, 'act_1', true);
-  const updatedStudentRecord = store.getCompleteStudentRecord('23CS101');
+  const updatedStudentRecord = store.getCompleteStudentRecord('TEST_REG_001');
   const isAct1Completed = updatedStudentRecord?.counsellingSessions[0]?.action_plan.find(a => a.id === 'act_1')?.completed;
 
   assertTest(
@@ -220,23 +220,23 @@ async function runSystemDiagnostics() {
   // -------------------------------------------------------------
   console.log('\n--- 5. BEFORE/AFTER IMPROVEMENT ANALYSIS TEST ---');
   const followUpCsv = `register_number,student_name,department,program,year,section,semester,attendance_percentage,sgpa,cgpa,backlog_count,backlog_subjects
-23CS101,Aarav Sharma,CSE,B.Tech,3,A,5,78.0,6.9,7.3,1,"[""Maths III""]"
-23CS102,Priya Nair,CSE,B.Tech,3,A,5,84.5,7.9,7.8,0,"[]"
-23EC201,Karthik Reddy,ECE,B.Tech,2,B,3,90.0,9.2,8.8,0,"[]"
-23AI301,Sneha Verma,CSE-AIML,B.Tech,3,A,5,79.5,7.3,7.4,0,"[]"
-23IT401,Rohan Gupta,IT,B.Tech,2,A,4,92.0,9.3,9.1,0,"[]"`;
+TEST_REG_001,Student_001,Dept_A,B.Tech,3,A,5,78.0,6.9,7.3,1,"[""Subject_B""]"
+TEST_REG_002,Student_002,Dept_A,B.Tech,3,A,5,84.5,7.9,7.8,0,"[]"
+TEST_REG_003,Student_003,Dept_B,B.Tech,2,B,3,90.0,9.2,8.8,0,"[]"
+TEST_REG_004,Student_004,Dept_C,B.Tech,3,A,5,79.5,7.3,7.4,0,"[]"
+TEST_REG_005,Student_005,Dept_D,B.Tech,2,A,4,92.0,9.3,9.1,0,"[]"`;
 
-  const followUpResult = parseAndValidateStudentCsv(followUpCsv, 'Mid-Term 2 (Nov 2026)');
+  const followUpResult = parseAndValidateStudentCsv(followUpCsv, 'Snapshot_2');
 
   store.importData({
-    filename: 'test_followup.csv',
-    snapshotLabel: 'Mid-Term 2 (Nov 2026)',
+    filename: 'test_snapshot_2.csv',
+    snapshotLabel: 'Snapshot_2',
     students: followUpResult.validStudents,
     academicRecords: followUpResult.validAcademicRecords,
     behaviourRecords: followUpResult.validBehaviourRecords,
   });
 
-  const comparison = store.getImprovementComparison('23CS101');
+  const comparison = store.getImprovementComparison('TEST_REG_001');
   assertTest(
     'Before/After Improvement Comparison Calculated',
     comparison !== null && comparison.attendance_diff > 0 && comparison.backlog_diff < 0,
