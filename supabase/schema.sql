@@ -1,10 +1,91 @@
--- CounsellAI Supabase Database Architecture & Schema
--- Generated based on databasearchitecture.md & securityrules.md
+-- CounselAI Enterprise Supabase Database Architecture & Schema
+-- Multi-User Role-Based Access Control, Departmental Scopes & Audit Logging
 
--- 1. Enable UUID extension
+-- 1. Enable UUID Extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. Data Imports Table
+-- 2. Users Table
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  name TEXT NOT NULL,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('ADMIN', 'COUNSELLOR')),
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')),
+  email TEXT,
+  phone TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3. Departments Table
+CREATE TABLE IF NOT EXISTS departments (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  name TEXT NOT NULL,
+  code TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4. Academic Years Table
+CREATE TABLE IF NOT EXISTS academic_years (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  name TEXT NOT NULL,
+  year_number INTEGER NOT NULL UNIQUE CHECK (year_number >= 1 AND year_number <= 6),
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 5. Sections Table (Belongs to Department & Year)
+CREATE TABLE IF NOT EXISTS sections (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  department_id TEXT NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  year_id TEXT NOT NULL REFERENCES academic_years(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_dept_year_section UNIQUE (department_id, year_id, name)
+);
+
+-- 6. Counselor Assignments Table (Max 2 counselors per section)
+CREATE TABLE IF NOT EXISTS counselor_assignments (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  counselor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  department_id TEXT NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  year_id TEXT NOT NULL REFERENCES academic_years(id) ON DELETE CASCADE,
+  section_id TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')),
+  assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Function & Trigger to enforce Max 2 Active Counselors Per Section
+CREATE OR REPLACE FUNCTION enforce_max_two_counselors_per_section()
+RETURNS TRIGGER AS $$
+DECLARE
+  active_count INTEGER;
+BEGIN
+  IF NEW.status = 'ACTIVE' THEN
+    SELECT COUNT(*) INTO active_count
+    FROM counselor_assignments
+    WHERE section_id = NEW.section_id
+      AND status = 'ACTIVE'
+      AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000');
+
+    IF active_count >= 2 THEN
+      RAISE EXCEPTION 'A section can have a maximum of 2 active counselors assigned.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_max_two_counselors ON counselor_assignments;
+CREATE TRIGGER trigger_max_two_counselors
+BEFORE INSERT OR UPDATE ON counselor_assignments
+FOR EACH ROW EXECUTE FUNCTION enforce_max_two_counselors_per_section();
+
+-- 7. Data Imports Table
 CREATE TABLE IF NOT EXISTS data_imports (
   id TEXT PRIMARY KEY,
   filename TEXT NOT NULL,
@@ -13,17 +94,23 @@ CREATE TABLE IF NOT EXISTS data_imports (
   valid_rows INTEGER NOT NULL DEFAULT 0,
   error_rows INTEGER NOT NULL DEFAULT 0,
   imported_by TEXT NOT NULL DEFAULT 'counsellor',
+  department_scope TEXT,
+  year_scope TEXT,
+  section_scope TEXT,
   imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. Students Table (Master Entity)
+-- 8. Students Table (Master Entity with relational foreign keys + display denormalizations)
 CREATE TABLE IF NOT EXISTS students (
   register_number TEXT PRIMARY KEY,
   student_name TEXT NOT NULL,
   department TEXT NOT NULL,
+  department_id TEXT REFERENCES departments(id) ON DELETE SET NULL,
   program TEXT NOT NULL DEFAULT 'B.Tech',
   year INTEGER NOT NULL CHECK (year >= 1 AND year <= 6),
+  year_id TEXT REFERENCES academic_years(id) ON DELETE SET NULL,
   section TEXT NOT NULL DEFAULT 'A',
+  section_id TEXT REFERENCES sections(id) ON DELETE SET NULL,
   semester INTEGER NOT NULL CHECK (semester >= 1 AND semester <= 8),
   student_contact TEXT,
   parent_name TEXT,
@@ -32,7 +119,7 @@ CREATE TABLE IF NOT EXISTS students (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. Academic Records Table (Versioned / Snapshot-based)
+-- 9. Academic Records Table (Versioned snapshots)
 CREATE TABLE IF NOT EXISTS academic_records (
   id TEXT PRIMARY KEY,
   register_number TEXT NOT NULL REFERENCES students(register_number) ON DELETE CASCADE,
@@ -51,7 +138,7 @@ CREATE TABLE IF NOT EXISTS academic_records (
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 5. Behaviour Records Table
+-- 10. Behaviour Records Table
 CREATE TABLE IF NOT EXISTS behaviour_records (
   id TEXT PRIMARY KEY,
   register_number TEXT NOT NULL REFERENCES students(register_number) ON DELETE CASCADE,
@@ -62,7 +149,7 @@ CREATE TABLE IF NOT EXISTS behaviour_records (
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 6. Risk Assessments Table
+-- 11. Risk Assessments Table
 CREATE TABLE IF NOT EXISTS risk_assessments (
   id TEXT PRIMARY KEY,
   register_number TEXT NOT NULL REFERENCES students(register_number) ON DELETE CASCADE,
@@ -73,13 +160,15 @@ CREATE TABLE IF NOT EXISTS risk_assessments (
   calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 7. Counselling Sessions Table
+-- 12. Counselling Sessions Table (with Authorship & Counselor Tracking)
 CREATE TABLE IF NOT EXISTS counselling_sessions (
   id TEXT PRIMARY KEY,
   register_number TEXT NOT NULL REFERENCES students(register_number) ON DELETE CASCADE,
   session_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  counsellor_id TEXT NOT NULL,
+  counsellor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   counsellor_name TEXT NOT NULL,
+  created_by TEXT,
+  updated_by TEXT,
   counselling_type TEXT NOT NULL CHECK (counselling_type IN ('ACADEMIC', 'ATTENDANCE', 'CAREER', 'BEHAVIOURAL', 'GENERAL', 'PARENT_MEETING', 'FOLLOW_UP', 'OTHER')),
   issue_identified TEXT NOT NULL,
   counsellor_observation TEXT NOT NULL,
@@ -88,21 +177,25 @@ CREATE TABLE IF NOT EXISTS counselling_sessions (
   follow_up_date TIMESTAMPTZ,
   follow_up_status TEXT CHECK (follow_up_status IN ('PENDING', 'DUE', 'COMPLETED', 'MISSED', 'RESCHEDULED', 'CANCELLED')),
   parent_comm_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED' CHECK (parent_comm_status IN ('NOT_REQUIRED', 'PENDING_APPROVAL', 'APPROVED', 'CONTACTED', 'UNABLE_TO_CONTACT', 'COMPLETED')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 8. Follow-ups Table
+-- 13. Follow-ups Table
 CREATE TABLE IF NOT EXISTS follow_ups (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL REFERENCES counselling_sessions(id) ON DELETE CASCADE,
   register_number TEXT NOT NULL REFERENCES students(register_number) ON DELETE CASCADE,
+  counsellor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  counsellor_name TEXT NOT NULL,
+  created_by TEXT,
   follow_up_date TIMESTAMPTZ NOT NULL,
   status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'DUE', 'COMPLETED', 'MISSED', 'RESCHEDULED', 'CANCELLED')),
   notes TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 9. Improvement Records Table (Before / After Comparison)
+-- 14. Improvement Records Table
 CREATE TABLE IF NOT EXISTS improvement_records (
   id TEXT PRIMARY KEY,
   register_number TEXT NOT NULL REFERENCES students(register_number) ON DELETE CASCADE,
@@ -117,7 +210,45 @@ CREATE TABLE IF NOT EXISTS improvement_records (
   evaluated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 15. Risk Configuration Table
+CREATE TABLE IF NOT EXISTS risk_config (
+  id TEXT PRIMARY KEY DEFAULT 'current_config',
+  attendance_warning NUMERIC(5,2) NOT NULL DEFAULT 75.0,
+  attendance_severe NUMERIC(5,2) NOT NULL DEFAULT 60.0,
+  sgpa_drop_threshold NUMERIC(4,2) NOT NULL DEFAULT 0.5,
+  backlog_threshold INTEGER NOT NULL DEFAULT 2,
+  updated_by TEXT NOT NULL DEFAULT 'system',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 16. Audit Logs Table
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  user_id TEXT NOT NULL,
+  username TEXT NOT NULL,
+  user_role TEXT NOT NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  metadata JSONB,
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for high-performance scoped queries
+CREATE INDEX IF NOT EXISTS idx_students_scope ON students(department_id, year_id, section_id);
+CREATE INDEX IF NOT EXISTS idx_students_dept_yr_sec ON students(department, year, section);
+CREATE INDEX IF NOT EXISTS idx_counselor_assignments ON counselor_assignments(counselor_id, status);
+CREATE INDEX IF NOT EXISTS idx_academic_records_regno ON academic_records(register_number);
+CREATE INDEX IF NOT EXISTS idx_counselling_sessions_regno ON counselling_sessions(register_number);
+CREATE INDEX IF NOT EXISTS idx_follow_ups_due ON follow_ups(status, follow_up_date);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
+
 -- Enable Row Level Security (RLS) on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE academic_years ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE counselor_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_imports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE academic_records ENABLE ROW LEVEL SECURITY;
@@ -126,14 +257,5 @@ ALTER TABLE risk_assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE counselling_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE follow_ups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE improvement_records ENABLE ROW LEVEL SECURITY;
-
--- Default Policies for Authenticated Counsellors
-CREATE POLICY "Allow authenticated read on all data" ON students FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated insert/update on all data" ON students FOR ALL TO authenticated USING (true);
-
-CREATE POLICY "Allow authenticated access to academic_records" ON academic_records FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow authenticated access to counselling_sessions" ON counselling_sessions FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow authenticated access to risk_assessments" ON risk_assessments FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow authenticated access to follow_ups" ON follow_ups FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow authenticated access to improvement_records" ON improvement_records FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow authenticated access to data_imports" ON data_imports FOR ALL TO authenticated USING (true);
+ALTER TABLE risk_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;

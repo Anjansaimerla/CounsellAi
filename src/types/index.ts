@@ -2,6 +2,10 @@ export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 
 export type PerformanceTrend = 'IMPROVING' | 'STABLE' | 'DECLINING' | 'INSUFFICIENT_DATA';
 
+export type UserRole = 'ADMIN' | 'COUNSELLOR';
+
+export type EntityStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+
 export type CounsellingType =
   | 'ACADEMIC'
   | 'ATTENDANCE'
@@ -35,6 +39,110 @@ export type ImprovementStatus =
   | 'NO_SIGNIFICANT_IMPROVEMENT'
   | 'DECLINED';
 
+export type AuditAction =
+  | 'LOGIN'
+  | 'LOGOUT'
+  | 'CREATE_COUNSELOR'
+  | 'UPDATE_COUNSELOR'
+  | 'DISABLE_COUNSELOR'
+  | 'ENABLE_COUNSELOR'
+  | 'RESET_PASSWORD'
+  | 'CREATE_DEPARTMENT'
+  | 'UPDATE_DEPARTMENT'
+  | 'DISABLE_DEPARTMENT'
+  | 'CREATE_YEAR'
+  | 'UPDATE_YEAR'
+  | 'DISABLE_YEAR'
+  | 'CREATE_SECTION'
+  | 'UPDATE_SECTION'
+  | 'DISABLE_SECTION'
+  | 'ASSIGN_COUNSELOR'
+  | 'UNASSIGN_COUNSELOR'
+  | 'IMPORT_CSV'
+  | 'CREATE_STUDENT'
+  | 'UPDATE_STUDENT'
+  | 'DELETE_STUDENT'
+  | 'CREATE_COUNSELLING_RECORD'
+  | 'UPDATE_COUNSELLING_RECORD'
+  | 'DELETE_COUNSELLING_RECORD'
+  | 'CREATE_FOLLOWUP'
+  | 'COMPLETE_FOLLOWUP'
+  | 'UPDATE_FOLLOWUP'
+  | 'CHANGE_RISK_CONFIG'
+  | 'CLEAR_ALL_DATA';
+
+export interface User {
+  id: string;
+  name: string;
+  username: string;
+  password_hash: string;
+  role: UserRole;
+  status: EntityStatus;
+  email?: string;
+  phone?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string; // e.g. "CSE", "ECE", "MECH"
+  status: EntityStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AcademicYear {
+  id: string;
+  name: string; // e.g. "Year 1", "Year 2", "Year 3", "Year 4"
+  year_number: number; // 1, 2, 3, 4
+  status: EntityStatus;
+  created_at: string;
+}
+
+export interface Section {
+  id: string;
+  department_id: string;
+  year_id: string;
+  name: string; // e.g. "A", "B", "C", "D"
+  status: EntityStatus;
+  created_at: string;
+}
+
+export interface CounselorAssignment {
+  id: string;
+  counselor_id: string;
+  department_id: string;
+  year_id: string;
+  section_id: string;
+  status: EntityStatus;
+  assigned_at: string;
+}
+
+export interface CounselorScope {
+  department_id: string;
+  department_name: string;
+  department_code: string;
+  year_id: string;
+  year_name: string;
+  year_number: number;
+  section_id: string;
+  section_name: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  username: string;
+  user_role: UserRole;
+  action: AuditAction;
+  entity_type: string;
+  entity_id?: string;
+  metadata?: Record<string, any>;
+  timestamp: string;
+}
+
 export interface SubjectWiseAttendance {
   [subjectCodeOrName: string]: number; // 0 to 100
 }
@@ -55,9 +163,12 @@ export interface Student {
   register_number: string;
   student_name: string;
   department: string;
+  department_id?: string;
   program: string;
   year: number;
+  year_id?: string;
   section: string;
+  section_id?: string;
   semester: number;
   student_contact?: string;
   parent_name?: string;
@@ -129,6 +240,8 @@ export interface CounsellingSession {
   session_date: string;
   counsellor_id: string;
   counsellor_name: string;
+  created_by?: string;
+  updated_by?: string;
   counselling_type: CounsellingType;
   issue_identified: string;
   counsellor_observation: string;
@@ -138,6 +251,7 @@ export interface CounsellingSession {
   follow_up_status?: FollowUpStatus;
   parent_comm_status: ParentCommStatus;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface FollowUpItem {
@@ -146,10 +260,16 @@ export interface FollowUpItem {
   register_number: string;
   student_name: string;
   department: string;
+  department_id?: string;
   year: number;
+  year_id?: string;
+  section?: string;
+  section_id?: string;
   follow_up_date: string;
   status: FollowUpStatus;
+  counsellor_id?: string;
   counsellor_name: string;
+  created_by?: string;
   counselling_type: CounsellingType;
   issue_identified: string;
   action_plan_count: number;
@@ -171,13 +291,20 @@ export interface DataImport {
   error_rows: number;
   imported_at: string;
   imported_by: string;
+  department_scope?: string;
+  year_scope?: string;
+  section_scope?: string;
 }
 
 export interface ImprovementComparison {
   register_number: string;
   student_name: string;
   department: string;
+  department_id?: string;
   year: number;
+  year_id?: string;
+  section?: string;
+  section_id?: string;
   baselineSnapshot: AcademicRecord;
   latestSnapshot: AcademicRecord;
   attendance_diff: number;

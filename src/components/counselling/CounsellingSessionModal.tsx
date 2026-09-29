@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { CounsellingType, ParentCommStatus, Student } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { CounsellingType, ParentCommStatus, Student, User } from '@/types';
 import { Modal } from '../ui/Modal';
 import { Plus, Trash2, Calendar, Check, AlertCircle } from 'lucide-react';
 
@@ -9,11 +9,13 @@ interface CounsellingSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: Student | null;
+  currentUser?: User | null;
   onSaveSession: (sessionData: {
     register_number: string;
     session_date: string;
     counsellor_id: string;
     counsellor_name: string;
+    created_by?: string;
     counselling_type: CounsellingType;
     issue_identified: string;
     counsellor_observation: string;
@@ -28,12 +30,13 @@ export const CounsellingSessionModal: React.FC<CounsellingSessionModalProps> = (
   isOpen,
   onClose,
   student,
+  currentUser,
   onSaveSession,
 }) => {
   const [sessionDate, setSessionDate] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [counsellorName, setCounsellorName] = useState('Dr. S. Mehta');
+  const [counsellorName, setCounsellorName] = useState(currentUser?.name || 'Counselor');
   const [counsellingType, setCounsellingType] = useState<CounsellingType>('ACADEMIC');
   const [issueIdentified, setIssueIdentified] = useState('');
   const [counsellorObservation, setCounsellorObservation] = useState('');
@@ -52,16 +55,18 @@ export const CounsellingSessionModal: React.FC<CounsellingSessionModalProps> = (
   >([
     {
       id: 'action_1',
-      action: 'Attend daily doubt clearing session in departmental lab',
+      action: 'Attend daily tutorial clearing sessions in department',
       target: '4 sessions / week',
       deadline: defaultFollowUp,
       completed: false,
     },
   ]);
 
-  const [formError, setFormError] = useState<string | null>(null);
-
-  if (!student) return null;
+  useEffect(() => {
+    if (currentUser) {
+      setCounsellorName(currentUser.name);
+    }
+  }, [currentUser]);
 
   const handleAddActionItem = () => {
     setActionItems([
@@ -77,8 +82,7 @@ export const CounsellingSessionModal: React.FC<CounsellingSessionModalProps> = (
   };
 
   const handleRemoveActionItem = (id: string) => {
-    if (actionItems.length === 1) return;
-    setActionItems(actionItems.filter((a) => a.id !== id));
+    setActionItems(actionItems.filter((item) => item.id !== id));
   };
 
   const handleUpdateActionItem = (
@@ -93,36 +97,21 @@ export const CounsellingSessionModal: React.FC<CounsellingSessionModalProps> = (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
+    if (!student) return;
 
-    if (!issueIdentified.trim()) {
-      setFormError('Please enter the confirmed issue identified during the session.');
-      return;
-    }
-    if (!counsellorObservation.trim()) {
-      setFormError('Please enter counsellor observations.');
-      return;
-    }
-    if (!adviceGiven.trim()) {
-      setFormError('Please enter the guidance and advice given.');
-      return;
-    }
-
-    const validActions = actionItems.filter((a) => a.action.trim() && a.target.trim());
-    if (validActions.length === 0) {
-      setFormError('Please specify at least one actionable milestone in the action plan.');
-      return;
-    }
+    // Filter valid action items
+    const validActions = actionItems.filter((a) => a.action.trim().length > 0);
 
     onSaveSession({
       register_number: student.register_number,
       session_date: new Date(sessionDate).toISOString(),
-      counsellor_id: 'counsellor_1',
+      counsellor_id: currentUser?.id || 'usr_counsellor',
       counsellor_name: counsellorName,
+      created_by: currentUser?.id,
       counselling_type: counsellingType,
-      issue_identified: issueIdentified.trim(),
-      counsellor_observation: counsellorObservation.trim(),
-      advice_given: adviceGiven.trim(),
+      issue_identified: issueIdentified,
+      counsellor_observation: counsellorObservation,
+      advice_given: adviceGiven,
       action_plan: validActions,
       follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : undefined,
       parent_comm_status: parentCommStatus,
@@ -131,126 +120,114 @@ export const CounsellingSessionModal: React.FC<CounsellingSessionModalProps> = (
     onClose();
   };
 
+  if (!student) return null;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Record Counselling Session"
-      subtitle={`Student: ${student.student_name} (${student.register_number}) • ${student.department}`}
-      maxWidth="3xl"
+      title="Record Academic Counselling Session"
+      subtitle={`Student: ${student.student_name} (${student.register_number}) • ${student.department} Year ${student.year}`}
+      maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-        {formError && (
-          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{formError}</span>
-          </div>
-        )}
-
-        {/* Row 1: Date, Type, Counsellor */}
+        {/* Row 1: Session Date, Counsellor Name, Counselling Type */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">
-              Session Date *
-            </label>
+            <label className="block font-semibold text-slate-700 mb-1">Session Date</label>
             <input
               type="date"
+              required
               value={sessionDate}
               onChange={(e) => setSessionDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-              required
+              className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 font-medium"
             />
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">
-              Counselling Type *
-            </label>
+            <label className="block font-semibold text-slate-700 mb-1">Counsellor Name</label>
+            <input
+              type="text"
+              required
+              value={counsellorName}
+              onChange={(e) => setCounsellorName(e.target.value)}
+              className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Counselling Type</label>
             <select
               value={counsellingType}
               onChange={(e) => setCounsellingType(e.target.value as CounsellingType)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
+              className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 font-medium bg-white"
             >
-              <option value="ACADEMIC">Academic Intervention</option>
-              <option value="ATTENDANCE">Attendance Shortage</option>
-              <option value="BEHAVIOURAL">Behavioural & Classroom</option>
-              <option value="CAREER">Career & Placement</option>
-              <option value="PARENT_MEETING">Parent Consultation</option>
-              <option value="FOLLOW_UP">Follow-up Review</option>
-              <option value="GENERAL">General Counselling</option>
-              <option value="OTHER">Other</option>
+              <option value="ACADEMIC">ACADEMIC</option>
+              <option value="ATTENDANCE">ATTENDANCE</option>
+              <option value="CAREER">CAREER</option>
+              <option value="BEHAVIOURAL">BEHAVIOURAL</option>
+              <option value="GENERAL">GENERAL</option>
+              <option value="PARENT_MEETING">PARENT_MEETING</option>
+              <option value="FOLLOW_UP">FOLLOW_UP</option>
+              <option value="OTHER">OTHER</option>
             </select>
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">
-              Counsellor Name *
-            </label>
-            <input
-              type="text"
-              value={counsellorName}
-              onChange={(e) => setCounsellorName(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-              required
-            />
           </div>
         </div>
 
         {/* Issue Identified */}
         <div>
-          <label className="font-semibold text-slate-700 block mb-1">
-            Confirmed Issue Identified *
+          <label className="block font-semibold text-slate-700 mb-1">
+            Primary Issue Identified <span className="text-rose-500">*</span>
           </label>
-          <input
-            type="text"
+          <textarea
+            required
+            rows={2}
             value={issueIdentified}
             onChange={(e) => setIssueIdentified(e.target.value)}
-            placeholder="e.g. Backlog in Mathematics III and severe morning session attendance deficit"
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-slate-900"
-            required
+            placeholder="e.g. Critical drop in internal marks and morning lecture attendance in Mathematics III"
+            className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         {/* Observation */}
         <div>
-          <label className="font-semibold text-slate-700 block mb-1">
-            Counsellor Observation *
+          <label className="block font-semibold text-slate-700 mb-1">
+            Counsellor Observation & Root Cause Notes
           </label>
           <textarea
+            rows={2}
             value={counsellorObservation}
             onChange={(e) => setCounsellorObservation(e.target.value)}
-            rows={2}
-            placeholder="Document student's feedback, attitude, explanation, and engagement..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-slate-900"
-            required
+            placeholder="e.g. Student expresses difficulty understanding recursion concepts and commutes 2 hours daily."
+            className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
-        {/* Advice Given */}
+        {/* Guidance / Advice Given */}
         <div>
-          <label className="font-semibold text-slate-700 block mb-1">
-            Advice / Guidance Given *
+          <label className="block font-semibold text-slate-700 mb-1">
+            Advice / Intervention Guidance Provided <span className="text-rose-500">*</span>
           </label>
           <textarea
+            required
+            rows={2}
             value={adviceGiven}
             onChange={(e) => setAdviceGiven(e.target.value)}
-            rows={2}
-            placeholder="Document specific study strategy, attendance targets, and remedial steps agreed upon..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-slate-900"
-            required
+            placeholder="e.g. Instructed to attend departmental remedial hour on Mondays & Thursdays, meet faculty advisor."
+            className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
-        {/* Action Plan Builder */}
-        <div className="space-y-2 pt-2 border-t border-slate-200">
+        {/* Action Plan Builder (Section 12 & 13 of newupdation.md) */}
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
           <div className="flex items-center justify-between">
-            <label className="font-semibold text-slate-800">
-              Structured Action Plan Items *
-            </label>
+            <span className="font-bold text-slate-800 text-xs">
+              Structured Action Plan & Milestones
+            </span>
             <button
               type="button"
               onClick={handleAddActionItem}
-              className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 text-[11px]"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Action Item</span>
@@ -261,89 +238,98 @@ export const CounsellingSessionModal: React.FC<CounsellingSessionModalProps> = (
             {actionItems.map((item, index) => (
               <div
                 key={item.id}
-                className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+                className="grid grid-cols-12 gap-2 bg-white p-2 rounded border border-slate-200 items-center"
               >
-                <input
-                  type="text"
-                  value={item.action}
-                  onChange={(e) => handleUpdateActionItem(item.id, 'action', e.target.value)}
-                  placeholder={`Action ${index + 1} (e.g. Attend tutorial)`}
-                  className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 text-xs"
-                />
-                <input
-                  type="text"
-                  value={item.target}
-                  onChange={(e) => handleUpdateActionItem(item.id, 'target', e.target.value)}
-                  placeholder="Target (e.g. 2 hrs/day)"
-                  className="w-full sm:w-36 px-2.5 py-1.5 bg-white border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 text-xs"
-                />
-                <input
-                  type="date"
-                  value={item.deadline}
-                  onChange={(e) => handleUpdateActionItem(item.id, 'deadline', e.target.value)}
-                  className="w-full sm:w-32 px-2.5 py-1.5 bg-white border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveActionItem(item.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 self-end sm:self-center"
-                  disabled={actionItems.length === 1}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="col-span-6">
+                  <input
+                    type="text"
+                    required
+                    placeholder={`Action ${index + 1} (e.g. Complete 5 practice problem sets)`}
+                    value={item.action}
+                    onChange={(e) => handleUpdateActionItem(item.id, 'action', e.target.value)}
+                    className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <input
+                    type="text"
+                    placeholder="Target (e.g. 80% mark)"
+                    value={item.target}
+                    onChange={(e) => handleUpdateActionItem(item.id, 'target', e.target.value)}
+                    className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <input
+                    type="date"
+                    value={item.deadline}
+                    onChange={(e) => handleUpdateActionItem(item.id, 'deadline', e.target.value)}
+                    className="w-full px-1.5 py-1 border border-slate-300 rounded text-[11px]"
+                  />
+                </div>
+                <div className="col-span-1 text-right">
+                  {actionItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveActionItem(item.id)}
+                      className="text-slate-400 hover:text-rose-600 p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Follow-up & Parent Communication */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+        {/* Automated Follow-up Date (Section 13) & Parent Communication */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-blue-50/60 border border-blue-100 rounded-xl">
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">
-              Scheduled Follow-up Date
+            <label className="block font-semibold text-blue-950 mb-1">
+              Automated Follow-up Review Date
             </label>
             <input
               type="date"
               value={followUpDate}
               onChange={(e) => setFollowUpDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              className="w-full px-3 py-1.5 border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 bg-white"
             />
+            <span className="text-[10px] text-blue-700 mt-1 block">
+              Auto-schedules a milestone in the follow-up queue.
+            </span>
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">
-              Parent Communication Status
-            </label>
+            <label className="block font-semibold text-blue-950 mb-1">Parent Communication</label>
             <select
               value={parentCommStatus}
               onChange={(e) => setParentCommStatus(e.target.value as ParentCommStatus)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              className="w-full px-3 py-1.5 border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 bg-white"
             >
               <option value="NOT_REQUIRED">Not Required</option>
-              <option value="PENDING_APPROVAL">Pending Department Approval</option>
-              <option value="APPROVED">Approved for Contact</option>
-              <option value="CONTACTED">Parent Contacted</option>
-              <option value="UNABLE_TO_CONTACT">Unable to Reach</option>
-              <option value="COMPLETED">Parent Meeting Completed</option>
+              <option value="PENDING_APPROVAL">Pending Departmental Notice</option>
+              <option value="CONTACTED">Parent Contacted via Phone/Email</option>
+              <option value="UNABLE_TO_CONTACT">Unable to Contact</option>
+              <option value="COMPLETED">Parent In-Person Meeting Held</option>
             </select>
           </div>
         </div>
 
-        {/* Submit Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+        {/* Footer Actions */}
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors"
+            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm"
           >
-            <Check className="w-4 h-4" />
-            <span>Save Counselling Record</span>
+            Save Record & Schedule Follow-up
           </button>
         </div>
       </form>

@@ -2,6 +2,7 @@ import Papa from 'papaparse';
 import {
   AcademicRecord,
   BehaviourRecord,
+  CounselorScope,
   InternalAssessmentMarks,
   Student,
   SubjectWiseAttendance,
@@ -22,6 +23,7 @@ export interface CsvParseResult {
   validBehaviourRecords: BehaviourRecord[];
   errors: CsvValidationError[];
   rawRowsCount: number;
+  scopeViolationsCount?: number;
 }
 
 /**
@@ -97,11 +99,12 @@ function parseBacklogSubjects(raw?: string): string[] {
 }
 
 /**
- * Parse and validate CSV content string
+ * Parse and validate CSV content string with optional counselor scope enforcement
  */
 export function parseAndValidateStudentCsv(
   csvContent: string,
-  snapshotLabel: string = 'Current Snapshot'
+  snapshotLabel: string = 'Current Snapshot',
+  scope?: CounselorScope | null
 ): CsvParseResult {
   const parsed = Papa.parse<Record<string, any>>(csvContent, {
     header: true,
@@ -114,6 +117,7 @@ export function parseAndValidateStudentCsv(
   const validAcademicRecords: AcademicRecord[] = [];
   const validBehaviourRecords: BehaviourRecord[] = [];
   const seenRegisterNumbers = new Set<string>();
+  let scopeViolationsCount = 0;
 
   parsed.data.forEach((row, index) => {
     const rowNumber = index + 2; // 1-based + 1 for header
@@ -132,6 +136,24 @@ export function parseAndValidateStudentCsv(
     }
 
     const data: RawCsvStudentRow = validationResult.data;
+
+    // Check Scope Compliance if counselor scope is provided
+    if (scope) {
+      const matchDept = data.department.toUpperCase() === scope.department_code.toUpperCase();
+      const matchYear = Number(data.year) === Number(scope.year_number);
+      const matchSec = (data.section || 'A').toUpperCase() === scope.section_name.toUpperCase();
+
+      if (!matchDept || !matchYear || !matchSec) {
+        scopeViolationsCount++;
+        errors.push({
+          rowNumber,
+          registerNumber: data.register_number,
+          field: 'scope_authorization',
+          message: `Out of scope. Student belongs to ${data.department} Year ${data.year} Sec ${data.section}, but your authorized assignment is ${scope.department_code} • Year ${scope.year_number} • Section ${scope.section_name}`,
+        });
+        return;
+      }
+    }
 
     // Check Duplicate within same CSV
     if (seenRegisterNumbers.has(data.register_number)) {
@@ -204,13 +226,14 @@ export function parseAndValidateStudentCsv(
     validBehaviourRecords,
     errors,
     rawRowsCount: parsed.data.length,
+    scopeViolationsCount,
   };
 }
 
 /**
  * Generates a clean official CSV template with standard column headers for production data ingestion
  */
-export function generateCsvTemplate(): string {
+export function generateCsvTemplate(scope?: CounselorScope | null): string {
   const headers = [
     'register_number',
     'student_name',
@@ -235,6 +258,34 @@ export function generateCsvTemplate(): string {
     'classroom_behaviour',
     'academic_difficulties',
   ];
+
+  if (scope) {
+    const exampleRow = [
+      `24${scope.department_code}${scope.year_number}${scope.section_name}01`,
+      'Sample Student Name',
+      scope.department_code,
+      'B.Tech',
+      scope.year_number,
+      scope.section_name,
+      scope.year_number * 2,
+      'student@institution.edu',
+      'Parent Name',
+      '+91 98765 00000',
+      '68.5',
+      'Maths: 65, OS: 72',
+      '18/25',
+      '6.2',
+      '6.5',
+      '1',
+      'Maths',
+      '75',
+      '80',
+      'NONE',
+      'Attentive in class',
+      'Needs support in tutorial problem sets',
+    ];
+    return [headers.join(','), exampleRow.join(',')].join('\n');
+  }
 
   return headers.join(',');
 }

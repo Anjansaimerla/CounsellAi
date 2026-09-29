@@ -7,6 +7,7 @@ import {
   CounsellingType,
   ParentCommStatus,
   ActionPlanItem,
+  User as UserModel,
 } from '@/types';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
@@ -42,11 +43,13 @@ interface StudentProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   record: CompleteStudentRecord | null;
+  currentUser?: UserModel | null;
   onSaveSession: (sessionData: {
     register_number: string;
     session_date: string;
     counsellor_id: string;
     counsellor_name: string;
+    created_by?: string;
     counselling_type: CounsellingType;
     issue_identified: string;
     counsellor_observation: string;
@@ -62,6 +65,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   isOpen,
   onClose,
   record,
+  currentUser,
   onSaveSession,
   onToggleActionItem,
 }) => {
@@ -71,9 +75,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [showSubjectDetails, setShowSubjectDetails] = useState(false);
   const [showPrintReport, setShowPrintReport] = useState(false);
 
-  // In-line Counselling Session Form State (Section 3.1 & 3.3 of updation.md)
+  // In-line Counselling Session Form State
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
-  const [counsellorName, setCounsellorName] = useState('Dr. S. Mehta');
+  const [counsellorName, setCounsellorName] = useState(currentUser?.name || 'Dr. S. Mehta');
   const [counsellingType, setCounsellingType] = useState<CounsellingType>('ACADEMIC');
   const [issueIdentified, setIssueIdentified] = useState('');
   const [counsellorObservation, setCounsellorObservation] = useState('');
@@ -214,8 +218,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     onSaveSession({
       register_number: student.register_number,
       session_date: new Date(sessionDate).toISOString(),
-      counsellor_id: 'counsellor_1',
+      counsellor_id: currentUser?.id || 'usr_counsellor',
       counsellor_name: counsellorName,
+      created_by: currentUser?.id,
       counselling_type: counsellingType,
       issue_identified: issueIdentified.trim(),
       counsellor_observation: counsellorObservation.trim(),
