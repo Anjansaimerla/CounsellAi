@@ -238,11 +238,11 @@ export class CounsellStore {
 
     [deptCSE, deptECE, deptMECH, deptIT].forEach((d) => this.departments.set(d.id, d));
 
-    // 2. Academic Years
-    const y1: AcademicYear = { id: 'year_1', name: 'Year 1', year_number: 1, status: 'ACTIVE', created_at: new Date().toISOString() };
-    const y2: AcademicYear = { id: 'year_2', name: 'Year 2', year_number: 2, status: 'ACTIVE', created_at: new Date().toISOString() };
-    const y3: AcademicYear = { id: 'year_3', name: 'Year 3', year_number: 3, status: 'ACTIVE', created_at: new Date().toISOString() };
-    const y4: AcademicYear = { id: 'year_4', name: 'Year 4', year_number: 4, status: 'ACTIVE', created_at: new Date().toISOString() };
+    // 2. Academic Years (with Graduation Year)
+    const y1: AcademicYear = { id: 'year_1', name: '2029 (Year 1)', year_number: 1, graduation_year: 2029, status: 'ACTIVE', created_at: new Date().toISOString() };
+    const y2: AcademicYear = { id: 'year_2', name: '2028 (Year 2)', year_number: 2, graduation_year: 2028, status: 'ACTIVE', created_at: new Date().toISOString() };
+    const y3: AcademicYear = { id: 'year_3', name: '2027 (Year 3)', year_number: 3, graduation_year: 2027, status: 'ACTIVE', created_at: new Date().toISOString() };
+    const y4: AcademicYear = { id: 'year_4', name: '2026 (Year 4)', year_number: 4, graduation_year: 2026, status: 'ACTIVE', created_at: new Date().toISOString() };
 
     [y1, y2, y3, y4].forEach((y) => this.years.set(y.id, y));
 
@@ -620,6 +620,7 @@ export class CounsellStore {
       year_id: yr.id,
       year_name: yr.name,
       year_number: yr.year_number,
+      graduation_year: yr.graduation_year,
       section_id: sec.id,
       section_name: sec.name,
     };
@@ -823,6 +824,86 @@ export class CounsellStore {
     return true;
   }
 
+  public async updateUser(
+    userId: string,
+    params: {
+      name?: string;
+      username?: string;
+      email?: string;
+      phone?: string;
+      role?: UserRole;
+      status?: EntityStatus;
+      passwordPlain?: string;
+    },
+    adminUser: User
+  ): Promise<{ success: boolean; error?: string }> {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found.' };
+
+    if (params.username && params.username.toLowerCase() !== user.username.toLowerCase()) {
+      const existing = this.getUserByUsername(params.username);
+      if (existing) {
+        return { success: false, error: `Username '${params.username}' is already taken.` };
+      }
+      user.username = params.username;
+    }
+
+    if (params.name) user.name = params.name;
+    if (params.email !== undefined) user.email = params.email;
+    if (params.phone !== undefined) user.phone = params.phone;
+    if (params.role) user.role = params.role;
+    if (params.status) user.status = params.status;
+    if (params.passwordPlain) {
+      user.password_hash = await hashPassword(params.passwordPlain);
+    }
+    user.updated_at = new Date().toISOString();
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'UPDATE_COUNSELOR',
+      entity_type: 'USER',
+      entity_id: userId,
+      metadata: { username: user.username, name: user.name, role: user.role },
+    });
+
+    this.saveToLocalStorage();
+    return { success: true };
+  }
+
+  public async deleteUser(userId: string, adminUser: User): Promise<boolean> {
+    const user = this.users.get(userId);
+    if (!user) return false;
+
+    // Prevent deleting self (current logged-in admin)
+    if (userId === adminUser.id) {
+      return false;
+    }
+
+    // Remove user assignments
+    for (const [id, asg] of this.assignments.entries()) {
+      if (asg.counselor_id === userId) {
+        this.assignments.delete(id);
+      }
+    }
+
+    this.users.delete(userId);
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'DELETE_COUNSELOR',
+      entity_type: 'USER',
+      entity_id: userId,
+      metadata: { deleted_username: user.username, deleted_name: user.name },
+    });
+
+    this.saveToLocalStorage();
+    return true;
+  }
+
   // --- Departments, Years, Sections ---
   public getDepartments(): Department[] {
     return Array.from(this.departments.values());
@@ -880,16 +961,52 @@ export class CounsellStore {
     return true;
   }
 
+  public deleteDepartment(id: string, adminUser: User): boolean {
+    const dept = this.departments.get(id);
+    if (!dept) return false;
+
+    // Clean up sections belonging to this department
+    for (const [secId, sec] of this.sections.entries()) {
+      if (sec.department_id === id) {
+        this.sections.delete(secId);
+      }
+    }
+
+    // Clean up assignments belonging to this department
+    for (const [asgId, asg] of this.assignments.entries()) {
+      if (asg.department_id === id) {
+        this.assignments.delete(asgId);
+      }
+    }
+
+    this.departments.delete(id);
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'DELETE_DEPARTMENT',
+      entity_type: 'DEPARTMENT',
+      entity_id: id,
+      metadata: { name: dept.name, code: dept.code },
+    });
+
+    this.saveToLocalStorage();
+    return true;
+  }
+
   public getYears(): AcademicYear[] {
     return Array.from(this.years.values()).sort((a, b) => a.year_number - b.year_number);
   }
 
-  public addYear(name: string, yearNumber: number, adminUser: User): AcademicYear {
+  public addYear(name: string, yearNumber: number, graduationYear: number, adminUser: User): AcademicYear {
     const id = `year_${yearNumber}_${Date.now()}`;
+    const displayName = name || `${graduationYear} (Year ${yearNumber})`;
     const year: AcademicYear = {
       id,
-      name,
+      name: displayName,
       year_number: yearNumber,
+      graduation_year: graduationYear,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
     };
@@ -902,11 +1019,74 @@ export class CounsellStore {
       action: 'CREATE_YEAR',
       entity_type: 'ACADEMIC_YEAR',
       entity_id: id,
-      metadata: { name, yearNumber },
+      metadata: { name: displayName, yearNumber, graduationYear },
     });
 
     this.saveToLocalStorage();
     return year;
+  }
+
+  public updateYear(
+    id: string,
+    name: string,
+    yearNumber: number,
+    graduationYear: number,
+    status: EntityStatus,
+    adminUser: User
+  ): boolean {
+    const year = this.years.get(id);
+    if (!year) return false;
+    year.name = name;
+    year.year_number = yearNumber;
+    year.graduation_year = graduationYear;
+    year.status = status;
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'UPDATE_YEAR',
+      entity_type: 'ACADEMIC_YEAR',
+      entity_id: id,
+      metadata: { name, yearNumber, graduationYear, status },
+    });
+
+    this.saveToLocalStorage();
+    return true;
+  }
+
+  public deleteYear(id: string, adminUser: User): boolean {
+    const year = this.years.get(id);
+    if (!year) return false;
+
+    // Cascade remove sections
+    for (const [secId, sec] of this.sections.entries()) {
+      if (sec.year_id === id) {
+        this.sections.delete(secId);
+      }
+    }
+
+    // Cascade remove assignments
+    for (const [asgId, asg] of this.assignments.entries()) {
+      if (asg.year_id === id) {
+        this.assignments.delete(asgId);
+      }
+    }
+
+    this.years.delete(id);
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'DELETE_YEAR',
+      entity_type: 'ACADEMIC_YEAR',
+      entity_id: id,
+      metadata: { name: year.name, yearNumber: year.year_number },
+    });
+
+    this.saveToLocalStorage();
+    return true;
   }
 
   public getSections(): Section[] {
@@ -937,6 +1117,62 @@ export class CounsellStore {
 
     this.saveToLocalStorage();
     return section;
+  }
+
+  public updateSection(
+    sectionId: string,
+    departmentId: string,
+    yearId: string,
+    name: string,
+    status: EntityStatus,
+    adminUser: User
+  ): boolean {
+    const sec = this.sections.get(sectionId);
+    if (!sec) return false;
+    sec.department_id = departmentId;
+    sec.year_id = yearId;
+    sec.name = name.toUpperCase();
+    sec.status = status;
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'UPDATE_SECTION',
+      entity_type: 'SECTION',
+      entity_id: sectionId,
+      metadata: { departmentId, yearId, name, status },
+    });
+
+    this.saveToLocalStorage();
+    return true;
+  }
+
+  public deleteSection(sectionId: string, adminUser: User): boolean {
+    const sec = this.sections.get(sectionId);
+    if (!sec) return false;
+
+    // Clean up assignments on this section
+    for (const [asgId, asg] of this.assignments.entries()) {
+      if (asg.section_id === sectionId) {
+        this.assignments.delete(asgId);
+      }
+    }
+
+    this.sections.delete(sectionId);
+
+    this.recordAuditLog({
+      user_id: adminUser.id,
+      username: adminUser.username,
+      user_role: adminUser.role,
+      action: 'DELETE_SECTION',
+      entity_type: 'SECTION',
+      entity_id: sectionId,
+      metadata: { name: sec.name },
+    });
+
+    this.saveToLocalStorage();
+    return true;
   }
 
   public updateSectionStatus(sectionId: string, status: EntityStatus, adminUser: User): boolean {

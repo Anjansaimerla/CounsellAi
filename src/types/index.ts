@@ -69,7 +69,11 @@ export type AuditAction =
   | 'COMPLETE_FOLLOWUP'
   | 'UPDATE_FOLLOWUP'
   | 'CHANGE_RISK_CONFIG'
-  | 'CLEAR_ALL_DATA';
+  | 'CLEAR_ALL_DATA'
+  | 'DELETE_COUNSELOR'
+  | 'DELETE_DEPARTMENT'
+  | 'DELETE_YEAR'
+  | 'DELETE_SECTION';
 
 export interface User {
   id: string;
@@ -95,8 +99,9 @@ export interface Department {
 
 export interface AcademicYear {
   id: string;
-  name: string; // e.g. "Year 1", "Year 2", "Year 3", "Year 4"
+  name: string; // e.g. "Class of 2028 (Year 2)"
   year_number: number; // 1, 2, 3, 4
+  graduation_year: number; // e.g. 2028, 2027, 2026, 2029
   status: EntityStatus;
   created_at: string;
 }
@@ -127,6 +132,7 @@ export interface CounselorScope {
   year_id: string;
   year_name: string;
   year_number: number;
+  graduation_year?: number;
   section_id: string;
   section_name: string;
 }

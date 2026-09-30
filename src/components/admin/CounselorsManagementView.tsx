@@ -14,10 +14,12 @@ import {
   AlertCircle,
   CheckCircle2,
   Edit,
+  Trash2,
   History,
   Lock,
   X,
   Sparkles,
+  Search,
 } from 'lucide-react';
 import { CounselorAssignment, CounselorScope, Department, AcademicYear, Section, User } from '@/types';
 import { store } from '@/lib/storage/store';
@@ -36,21 +38,33 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
   const years = store.getYears();
   const sections = store.getSections();
 
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editUserModal, setEditUserModal] = useState<User | null>(null);
+  const [deleteUserModal, setDeleteUserModal] = useState<User | null>(null);
   const [showAssignModal, setShowAssignModal] = useState<User | null>(null);
   const [showResetModal, setShowResetModal] = useState<User | null>(null);
-  const [showActivityModal, setShowActivityModal] = useState<User | null>(null);
 
-  // Form States
+  // Form States (Create)
   const [newName, setNewName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('change-me-immediately');
   const [newRole, setNewRole] = useState<'COUNSELLOR' | 'ADMIN'>('COUNSELLOR');
   const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   const [newDeptId, setNewDeptId] = useState(departments[0]?.id || '');
   const [newYearId, setNewYearId] = useState(years[0]?.id || '');
   const [newSectionId, setNewSectionId] = useState('');
+
+  // Form States (Edit)
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState<'COUNSELLOR' | 'ADMIN'>('COUNSELLOR');
+  const [editStatus, setEditStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
   // Assign scope states
   const [assignDeptId, setAssignDeptId] = useState('');
@@ -63,7 +77,6 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Filter sections for assignment dropdown based on selected dept & year
   const filteredSectionsForNew = sections.filter(
     (s) => s.department_id === newDeptId && s.year_id === newYearId && s.status === 'ACTIVE'
   );
@@ -71,6 +84,18 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
   const filteredSectionsForAssign = sections.filter(
     (s) => s.department_id === assignDeptId && s.year_id === assignYearId && s.status === 'ACTIVE'
   );
+
+  const filteredUsers = users.filter((u) => {
+    const scope = u.role === 'COUNSELLOR' ? store.getCounselorScope(u.id) : null;
+    const q = searchTerm.toLowerCase();
+    return (
+      u.name.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (scope && scope.department_code.toLowerCase().includes(q)) ||
+      (scope && scope.section_name.toLowerCase().includes(q))
+    );
+  });
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +109,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
         passwordPlain: newPassword,
         role: newRole,
         email: newEmail || undefined,
+        phone: newPhone || undefined,
         department_id: newRole === 'COUNSELLOR' ? newDeptId : undefined,
         year_id: newRole === 'COUNSELLOR' ? newYearId : undefined,
         section_id: newRole === 'COUNSELLOR' ? newSectionId : undefined,
@@ -101,6 +127,61 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
     setNewName('');
     setNewUsername('');
     setNewEmail('');
+    setNewPhone('');
+    onRefresh();
+  };
+
+  const handleOpenEdit = (user: User) => {
+    setErrorMsg(null);
+    setEditUserModal(user);
+    setEditName(user.name);
+    setEditUsername(user.username);
+    setEditEmail(user.email || '');
+    setEditPhone(user.phone || '');
+    setEditRole(user.role);
+    setEditStatus(user.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE');
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUserModal) return;
+    setErrorMsg(null);
+
+    const res = await store.updateUser(
+      editUserModal.id,
+      {
+        name: editName,
+        username: editUsername,
+        email: editEmail,
+        phone: editPhone,
+        role: editRole,
+        status: editStatus,
+      },
+      currentUser
+    );
+
+    if (!res.success) {
+      setErrorMsg(res.error || 'Failed to update user.');
+      return;
+    }
+
+    setSuccessMsg(`User '${editUsername}' updated successfully.`);
+    setEditUserModal(null);
+    onRefresh();
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserModal) return;
+    setErrorMsg(null);
+
+    const ok = await store.deleteUser(deleteUserModal.id, currentUser);
+    if (!ok) {
+      setErrorMsg('Cannot delete user (you cannot delete your own account).');
+      return;
+    }
+
+    setSuccessMsg(`User '${deleteUserModal.username}' deleted.`);
+    setDeleteUserModal(null);
     onRefresh();
   };
 
@@ -162,7 +243,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
           </div>
           <h2 className="text-xl font-bold text-slate-900">Counselors & User Directory</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Configure counselor accounts, Department/Year/Section scopes, and access credentials.
+            Configure counselor accounts, edit details, assign scopes, and manage access.
           </p>
         </div>
 
@@ -205,9 +286,20 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
 
       {/* Counselors Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">All System Accounts ({users.length})</h3>
-          <span className="text-xs text-slate-400">Enforcing Backend Scopes</span>
+        <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-slate-900">
+            System Accounts ({filteredUsers.length})
+          </h3>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search counselor, dept, section..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -223,7 +315,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {users.map((user) => {
+              {filteredUsers.map((user) => {
                 const scope = user.role === 'COUNSELLOR' ? store.getCounselorScope(user.id) : null;
                 const activeCoCounselors = scope ? store.getCounselorsForSection(scope.section_id) : [];
 
@@ -268,7 +360,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                             {scope.department_code}
                           </span>
                           <span>•</span>
-                          <span>Yr {scope.year_number}</span>
+                          <span>{scope.graduation_year ? `${scope.graduation_year} Batch (Yr ${scope.year_number})` : `Yr ${scope.year_number}`}</span>
                           <span>•</span>
                           <span>Sec {scope.section_name}</span>
                         </div>
@@ -316,6 +408,14 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
 
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEdit(user)}
+                          title="Edit Counselor Details"
+                          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+
                         {user.role === 'COUNSELLOR' && (
                           <button
                             onClick={() => {
@@ -365,6 +465,19 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                             <UserCheck className="w-4 h-4" />
                           )}
                         </button>
+
+                        {user.id !== currentUser.id && (
+                          <button
+                            onClick={() => {
+                              setErrorMsg(null);
+                              setDeleteUserModal(user);
+                            }}
+                            title="Delete Counselor / User"
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -430,6 +543,29 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Email (Optional)</label>
+                  <input
+                    type="email"
+                    placeholder="name@institution.edu"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Phone (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="+91 98765 43210"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Initial Password</label>
                 <input
@@ -467,7 +603,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                     </div>
 
                     <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">Year</label>
+                      <label className="block text-[11px] text-slate-500 mb-1">Graduation Year / Batch</label>
                       <select
                         value={newYearId}
                         onChange={(e) => {
@@ -478,7 +614,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                       >
                         {years.map((y) => (
                           <option key={y.id} value={y.id}>
-                            {y.name}
+                            {y.graduation_year ? `${y.graduation_year} (Yr ${y.year_number})` : y.name}
                           </option>
                         ))}
                       </select>
@@ -530,7 +666,158 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
         </div>
       )}
 
-      {/* MODAL 2: ASSIGN SCOPE (WITH MAX 2 CHECK) */}
+      {/* MODAL 2: EDIT COUNSELOR / USER */}
+      {editUserModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Edit className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-900 text-base">Edit User Details</h3>
+              </div>
+              <button
+                onClick={() => setEditUserModal(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-4 mt-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Role</label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white"
+                  >
+                    <option value="COUNSELLOR">COUNSELLOR</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Account Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white"
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditUserModal(null)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: DELETE COUNSELOR / USER */}
+      {deleteUserModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Delete Counselor / User</h3>
+                <p className="text-xs text-slate-500">Irreversible Action</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mt-4 text-xs text-slate-600">
+              <p>
+                Are you sure you want to permanently delete{' '}
+                <strong className="text-slate-900">{deleteUserModal.name}</strong> (
+                {deleteUserModal.username})?
+              </p>
+              <p className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                Any active section scope assignments for this counselor will be unlinked immediately.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-100 text-xs">
+              <button
+                type="button"
+                onClick={() => setDeleteUserModal(null)}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteUser}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold shadow-sm"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: ASSIGN SCOPE (WITH MAX 2 CHECK) */}
       {showAssignModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
@@ -571,7 +858,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Academic Year</label>
+                <label className="block font-semibold text-slate-700 mb-1">Graduation Year / Batch</label>
                 <select
                   value={assignYearId}
                   onChange={(e) => {
@@ -582,7 +869,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                 >
                   {years.map((y) => (
                     <option key={y.id} value={y.id}>
-                      {y.name} (Year {y.year_number})
+                      {y.graduation_year ? `${y.graduation_year} (Year ${y.year_number})` : y.name}
                     </option>
                   ))}
                 </select>
@@ -639,7 +926,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
         </div>
       )}
 
-      {/* MODAL 3: RESET PASSWORD */}
+      {/* MODAL 5: RESET PASSWORD */}
       {showResetModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">

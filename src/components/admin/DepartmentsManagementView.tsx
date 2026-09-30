@@ -5,8 +5,10 @@ import {
   Building2,
   Plus,
   Edit,
+  Trash2,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   X,
   Layers,
   Users,
@@ -31,6 +33,7 @@ export const DepartmentsManagementView: React.FC<DepartmentsManagementViewProps>
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editDept, setEditDept] = useState<Department | null>(null);
+  const [deleteDept, setDeleteDept] = useState<Department | null>(null);
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -59,6 +62,18 @@ export const DepartmentsManagementView: React.FC<DepartmentsManagementViewProps>
     setSuccessMsg(`Department '${code}' updated successfully.`);
     setEditDept(null);
     onRefresh();
+  };
+
+  const handleDelete = () => {
+    if (!deleteDept) return;
+    const success = store.deleteDepartment(deleteDept.id, currentUser);
+    if (success) {
+      setSuccessMsg(`Department '${deleteDept.code}' deleted successfully.`);
+      setDeleteDept(null);
+      onRefresh();
+    } else {
+      setErrorMsg(`Failed to delete department '${deleteDept.code}'.`);
+    }
   };
 
   const handleToggleStatus = (dept: Department) => {
@@ -104,6 +119,18 @@ export const DepartmentsManagementView: React.FC<DepartmentsManagementViewProps>
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs text-rose-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg(null)}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -160,18 +187,27 @@ export const DepartmentsManagementView: React.FC<DepartmentsManagementViewProps>
               </div>
 
               <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-xs">
-                <button
-                  onClick={() => {
-                    setEditDept(dept);
-                    setName(dept.name);
-                    setCode(dept.code);
-                    setStatus(dept.status);
-                  }}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium flex items-center gap-1.5"
-                >
-                  <Edit className="w-3.5 h-3.5" />
-                  <span>Edit</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setEditDept(dept);
+                      setName(dept.name);
+                      setCode(dept.code);
+                      setStatus(dept.status);
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium flex items-center gap-1.5"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => setDeleteDept(dept)}
+                    className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
+                    title="Delete Department"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
                 <button
                   onClick={() => handleToggleStatus(dept)}
@@ -321,6 +357,51 @@ export const DepartmentsManagementView: React.FC<DepartmentsManagementViewProps>
           </div>
         </div>
       )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteDept && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-rose-600">
+                <AlertTriangle className="w-5 h-5" />
+                <h3 className="font-bold text-slate-900 text-base">Delete Department</h3>
+              </div>
+              <button onClick={() => setDeleteDept(null)}>
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs text-slate-600">
+              <p>
+                Are you sure you want to permanently delete department{' '}
+                <strong className="text-slate-900 font-semibold">{deleteDept.name} ({deleteDept.code})</strong>?
+              </p>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] leading-relaxed">
+                <strong>Warning:</strong> This action will cascade delete all linked sections and counselor assignments under this department.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-5">
+              <button
+                type="button"
+                onClick={() => setDeleteDept(null)}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-sm"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
