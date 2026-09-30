@@ -81,6 +81,10 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
 
+  // Table row password reveal state
+  const [revealedRowPassId, setRevealedRowPassId] = useState<string | null>(null);
+  const [copiedRowPassId, setCopiedRowPassId] = useState<string | null>(null);
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -318,6 +322,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                 <th className="px-6 py-3.5">Name & Username</th>
                 <th className="px-4 py-3.5">Role</th>
                 <th className="px-4 py-3.5">Assigned Scope</th>
+                <th className="px-4 py-3.5">Password</th>
                 <th className="px-4 py-3.5">Assigned Section Status</th>
                 <th className="px-4 py-3.5">Account Status</th>
                 <th className="px-6 py-3.5 text-right">Actions</th>
@@ -378,6 +383,37 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                           Unassigned
                         </span>
                       )}
+                    </td>
+
+                    {/* CURRENT PASSWORD COLUMN */}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[11px] font-semibold text-slate-800 bg-slate-100 px-2 py-1 rounded border border-slate-200 select-all min-w-[70px]">
+                          {revealedRowPassId === user.id
+                            ? (user.current_password_display || 'change-me-immediately')
+                            : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setRevealedRowPassId(revealedRowPassId === user.id ? null : user.id)}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                          title={revealedRowPassId === user.id ? 'Hide password' : 'Show password'}
+                        >
+                          {revealedRowPassId === user.id ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(user.current_password_display || 'change-me-immediately');
+                            setCopiedRowPassId(user.id);
+                            setTimeout(() => setCopiedRowPassId(null), 2000);
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                          title="Copy password"
+                        >
+                          {copiedRowPassId === user.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </td>
 
                     <td className="px-4 py-4">
