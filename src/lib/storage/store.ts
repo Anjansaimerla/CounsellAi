@@ -807,7 +807,7 @@ export class CounsellStore {
   ): Promise<boolean> {
     const user = this.users.get(userId);
     if (!user) return false;
-    user.password_hash = await hashPassword(newPasswordPlain);
+    user.password_hash = await hashPassword(newPasswordPlain.trim());
     user.updated_at = new Date().toISOString();
 
     this.recordAuditLog({
@@ -822,6 +822,40 @@ export class CounsellStore {
 
     this.saveToLocalStorage();
     return true;
+  }
+
+  public async changeOwnPassword(
+    userId: string,
+    currentPasswordPlain: string,
+    newPasswordPlain: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found.' };
+
+    const isMatch = await verifyPassword(currentPasswordPlain, user.password_hash);
+    if (!isMatch) {
+      return { success: false, error: 'Current password does not match.' };
+    }
+
+    if (!newPasswordPlain || newPasswordPlain.trim().length < 4) {
+      return { success: false, error: 'New password must be at least 4 characters long.' };
+    }
+
+    user.password_hash = await hashPassword(newPasswordPlain.trim());
+    user.updated_at = new Date().toISOString();
+
+    this.recordAuditLog({
+      user_id: user.id,
+      username: user.username,
+      user_role: user.role,
+      action: 'CHANGE_PASSWORD',
+      entity_type: 'USER',
+      entity_id: user.id,
+      metadata: { username: user.username },
+    });
+
+    this.saveToLocalStorage();
+    return { success: true };
   }
 
   public async updateUser(

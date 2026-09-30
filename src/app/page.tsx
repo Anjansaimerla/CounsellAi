@@ -69,16 +69,31 @@ export default function HomePage() {
       setAuthSession(session);
       setIsAuthChecking(false);
       if (session) {
-        // Set initial landing tab according to role
-        if (session.user.role === 'ADMIN') {
-          setCurrentTab('admin-dashboard');
-        } else {
-          setCurrentTab('dashboard');
+        // Restore previous tab from sessionStorage if available for this session, else default
+        let targetTab: NavTab = session.user.role === 'ADMIN' ? 'admin-dashboard' : 'dashboard';
+        if (typeof window !== 'undefined') {
+          const savedTab = sessionStorage.getItem('counsellai_active_tab') as NavTab | null;
+          if (savedTab) {
+            // Validate that counselor cannot land on admin tab
+            if (session.user.role === 'COUNSELLOR' && savedTab.startsWith('admin-')) {
+              targetTab = 'dashboard';
+            } else {
+              targetTab = savedTab;
+            }
+          }
         }
+        setCurrentTab(targetTab);
       }
     });
     return () => unsubscribe();
   }, []);
+
+  const handleTabChange = (tab: NavTab) => {
+    setCurrentTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('counsellai_active_tab', tab);
+    }
+  };
 
   const currentUser: User | null = authSession
     ? store.getUserById(authSession.user.id) || {
@@ -122,6 +137,9 @@ export default function HomePage() {
 
   // Handle Logout
   const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('counsellai_active_tab');
+    }
     if (authSession) {
       store.recordAuditLog({
         user_id: authSession.user.id,
@@ -238,7 +256,7 @@ export default function HomePage() {
   return (
     <AppShell
       currentTab={currentTab}
-      onTabChange={setCurrentTab}
+      onTabChange={handleTabChange}
       currentUser={currentUser}
       scope={counselorScope}
       onLogout={handleLogout}
@@ -255,7 +273,7 @@ export default function HomePage() {
           students={students}
           recentImports={recentImports}
           onSelectStudent={(regNo) => setSelectedStudentRegNo(regNo)}
-          onNavigateToTab={(tab) => setCurrentTab(tab)}
+          onNavigateToTab={(tab) => handleTabChange(tab)}
         />
       )}
 
@@ -302,7 +320,7 @@ export default function HomePage() {
           stats={stats}
           students={students}
           onSelectStudent={(regNo) => setSelectedStudentRegNo(regNo)}
-          onNavigateToTab={(tab) => setCurrentTab(tab)}
+          onNavigateToTab={(tab) => handleTabChange(tab)}
         />
       )}
 
@@ -329,7 +347,7 @@ export default function HomePage() {
         <CsvUploadView
           onImportSuccess={handleImportSuccess}
           recentImports={recentImports}
-          onNavigateToStudents={() => setCurrentTab('students')}
+          onNavigateToStudents={() => handleTabChange('students')}
           currentUser={currentUser}
           scope={counselorScope}
         />
@@ -350,7 +368,7 @@ export default function HomePage() {
         <ImprovementView
           comparisons={comparisons}
           onSelectStudent={(regNo) => setSelectedStudentRegNo(regNo)}
-          onNavigateToUpload={() => setCurrentTab('upload')}
+          onNavigateToUpload={() => handleTabChange('upload')}
           totalStudentsCount={stats.totalStudents}
         />
       )}

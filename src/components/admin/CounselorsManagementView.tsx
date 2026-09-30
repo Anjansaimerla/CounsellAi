@@ -65,6 +65,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState<'COUNSELLOR' | 'ADMIN'>('COUNSELLOR');
   const [editStatus, setEditStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+  const [editPasswordVal, setEditPasswordVal] = useState('');
 
   // Assign scope states
   const [assignDeptId, setAssignDeptId] = useState('');
@@ -72,7 +73,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
   const [assignSectionId, setAssignSectionId] = useState('');
 
   // Reset password states
-  const [resetPasswordVal, setResetPasswordVal] = useState('change-me-immediately');
+  const [resetPasswordVal, setResetPasswordVal] = useState('');
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -140,6 +141,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
     setEditPhone(user.phone || '');
     setEditRole(user.role);
     setEditStatus(user.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE');
+    setEditPasswordVal('');
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
@@ -156,6 +158,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
         phone: editPhone,
         role: editRole,
         status: editStatus,
+        passwordPlain: editPasswordVal.trim() || undefined,
       },
       currentUser
     );
@@ -442,6 +445,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                         <button
                           onClick={() => {
                             setErrorMsg(null);
+                            setResetPasswordVal('');
                             setShowResetModal(user);
                           }}
                           title="Reset Password"
@@ -741,6 +745,19 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
               </div>
 
               <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Change Password <span className="text-[10px] text-slate-400 font-normal">(Leave blank to keep existing password)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter new password to override..."
+                  value={editPasswordVal}
+                  onChange={(e) => setEditPasswordVal(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none font-mono focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
                 <label className="block font-semibold text-slate-700 mb-1">Account Status</label>
                 <select
                   value={editStatus}
@@ -936,7 +953,10 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                 <h3 className="font-bold text-slate-900 text-base">Reset Password</h3>
               </div>
               <button
-                onClick={() => setShowResetModal(null)}
+                onClick={() => {
+                  setShowResetModal(null);
+                  setResetPasswordVal('');
+                }}
                 className="text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
@@ -945,31 +965,50 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
 
             <form onSubmit={handleResetPassword} className="space-y-4 mt-4 text-xs">
               <p className="text-slate-600">
-                Set a new temporary password for{' '}
-                <strong className="text-slate-900">{showResetModal.username}</strong>:
+                Set a new password for{' '}
+                <strong className="text-slate-900">{showResetModal.username}</strong> ({showResetModal.name}):
               </p>
 
               <div>
+                <label className="block font-semibold text-slate-700 mb-1">New Password</label>
                 <input
                   type="text"
                   required
+                  placeholder="Enter new password (min 4 characters)..."
                   value={resetPasswordVal}
                   onChange={(e) => setResetPasswordVal(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono outline-none focus:ring-2 focus:ring-amber-500 text-slate-900"
                 />
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-[10px] text-slate-400">Encrypted with PBKDF2</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const randomPass = 'Pass_' + Math.random().toString(36).slice(-6) + '!';
+                      setResetPasswordVal(randomPass);
+                    }}
+                    className="text-[10px] text-blue-600 hover:underline font-semibold"
+                  >
+                    Generate Random
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowResetModal(null)}
+                  onClick={() => {
+                    setShowResetModal(null);
+                    setResetPasswordVal('');
+                  }}
                   className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold"
+                  disabled={!resetPasswordVal.trim()}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold disabled:opacity-50"
                 >
                   Update Password
                 </button>

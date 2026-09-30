@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -21,8 +19,12 @@ import {
   FileText,
   LogOut,
   UserCheck,
+  KeyRound,
+  X,
+  Check,
 } from 'lucide-react';
 import { CounselorScope, User } from '@/types';
+import { store } from '@/lib/storage/store';
 
 export type NavTab =
   | 'admin-dashboard'
@@ -44,7 +46,7 @@ interface AppShellProps {
   currentTab: NavTab;
   onTabChange: (tab: NavTab) => void;
   currentUser: User;
-  scope?: CounselorScope | null;
+  scope: CounselorScope | null;
   onLogout: () => void;
   children: React.ReactNode;
   stats?: {
@@ -64,6 +66,40 @@ export const AppShell: React.FC<AppShellProps> = ({
   stats = { totalStudents: 0, highRiskCount: 0, followUpsDueCount: 0 },
 }) => {
   const isAdmin = currentUser.role === 'ADMIN';
+
+  // Password change modal state
+  const [showPassModal, setShowPassModal] = useState(false);
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [passError, setPassError] = useState<string | null>(null);
+  const [passSuccess, setPassSuccess] = useState<string | null>(null);
+  const [isChangingPass, setIsChangingPass] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError(null);
+    setPassSuccess(null);
+    setIsChangingPass(true);
+
+    try {
+      const res = await store.changeOwnPassword(currentUser.id, currentPass, newPass);
+      if (!res.success) {
+        setPassError(res.error || 'Failed to update password.');
+      } else {
+        setPassSuccess('Password updated successfully! It is saved to your account.');
+        setCurrentPass('');
+        setNewPass('');
+        setTimeout(() => {
+          setShowPassModal(false);
+          setPassSuccess(null);
+        }, 2000);
+      }
+    } catch (err: any) {
+      setPassError(err.message || 'Error changing password.');
+    } finally {
+      setIsChangingPass(false);
+    }
+  };
 
   // Admin Navigation structure as specified in Section 5 & 19 of newupdation.md
   const adminNavItems = [
@@ -369,7 +405,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <span className="hidden sm:inline">Import CSV</span>
             </button>
 
-            {/* Profile & Logout in Top Bar */}
+            {/* Profile & Password & Logout in Top Bar */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
               <div className="hidden lg:flex items-center gap-2 text-xs">
                 <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center border border-blue-200 text-xs shrink-0">
@@ -380,6 +416,21 @@ export const AppShell: React.FC<AppShellProps> = ({
                   <span className="text-[10px] text-slate-400 font-mono block">{currentUser.role}</span>
                 </div>
               </div>
+
+              <button
+                onClick={() => {
+                  setPassError(null);
+                  setPassSuccess(null);
+                  setCurrentPass('');
+                  setNewPass('');
+                  setShowPassModal(true);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                title="Change Account Password"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline">Password</span>
+              </button>
 
               <button
                 onClick={onLogout}
@@ -398,6 +449,86 @@ export const AppShell: React.FC<AppShellProps> = ({
           {children}
         </main>
       </div>
+
+      {/* MODAL: SELF-SERVICE CHANGE PASSWORD */}
+      {showPassModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Change Password</h3>
+                  <p className="text-[10px] text-slate-400">Account: {currentUser.username}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPassModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4 mt-4 text-xs">
+              {passError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                  {passError}
+                </div>
+              )}
+              {passSuccess && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{passSuccess}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Current Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter current password..."
+                  value={currentPass}
+                  onChange={(e) => setCurrentPass(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none font-mono focus:ring-2 focus:ring-blue-500 text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">New Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter new password (min 4 chars)..."
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none font-mono focus:ring-2 focus:ring-amber-500 text-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowPassModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPass || !currentPass || !newPass}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold disabled:opacity-50"
+                >
+                  {isChangingPass ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

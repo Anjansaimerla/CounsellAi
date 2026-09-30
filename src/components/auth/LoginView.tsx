@@ -115,6 +115,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           metadata: { role: res.user.role, scope: res.scope ? `${res.scope.department_code}_${res.scope.section_name}` : 'GLOBAL' },
         });
         onLoginSuccess(session);
+      } else {
+        setPassword('');
+        setErrorMsg(`Username '${presetUser}' selected. Since this password was updated from default, please enter your new password above.`);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Quick login failed.');
