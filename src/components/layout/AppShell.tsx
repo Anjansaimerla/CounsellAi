@@ -221,10 +221,10 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Scope Indicator Pill / Profile Card in Sidebar */}
         <div className="px-3.5 pt-3 pb-1">
-          <div className="p-3 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xs">
-            <div className="flex items-center justify-between text-[11px] mb-2">
+          <div className="p-3.5 rounded-2xl bg-slate-800/95 border border-slate-700/80 shadow-md">
+            <div className="flex items-center justify-between text-[11px] mb-2.5">
               <span
-                className={`font-semibold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wide ${
+                className={`font-bold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${
                   isAdmin
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                     : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
@@ -236,14 +236,14 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 onClick={onLogout}
                 title="Logout from account"
-                className="flex items-center gap-1 text-[11px] text-rose-300 hover:text-white bg-rose-500/20 hover:bg-rose-600 border border-rose-500/30 px-2 py-0.5 rounded-lg transition-all font-semibold shadow-xs"
+                className="flex items-center gap-1.5 text-xs text-rose-200 hover:text-white bg-rose-600/30 hover:bg-rose-600 border border-rose-500/40 px-2.5 py-1 rounded-lg transition-all font-bold shadow-xs cursor-pointer"
               >
-                <LogOut className="w-3 h-3" />
+                <LogOut className="w-3.5 h-3.5" />
                 <span>Logout</span>
               </button>
             </div>
 
-            <p className="text-xs font-bold text-white truncate">{currentUser.name}</p>
+            <p className="text-sm font-bold text-white truncate">{currentUser.name}</p>
             <p className="text-[11px] text-slate-300 mt-0.5 truncate">
               {isAdmin ? (
                 'Institution-Wide Access'
@@ -305,7 +305,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           <button
             onClick={onLogout}
             title="Sign Out"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-600/80 transition-colors text-xs font-semibold shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-600/80 transition-colors text-xs font-semibold shrink-0 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -363,20 +363,33 @@ export const AppShell: React.FC<AppShellProps> = ({
 
             <button
               onClick={() => onTabChange('upload')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
             >
               <UploadCloud className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Import CSV</span>
             </button>
 
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold transition-colors shadow-xs"
-              title="Logout"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+            {/* Profile & Logout in Top Bar */}
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div className="hidden lg:flex items-center gap-2 text-xs">
+                <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center border border-blue-200 text-xs shrink-0">
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="text-left leading-tight">
+                  <span className="font-bold text-slate-800 block text-xs truncate max-w-[120px]">{currentUser.name}</span>
+                  <span className="text-[10px] text-slate-400 font-mono block">{currentUser.role}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                title="Sign out of CounsellAI"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </header>
 
