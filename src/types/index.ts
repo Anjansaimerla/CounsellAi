@@ -81,6 +81,7 @@ export interface User {
   name: string;
   username: string;
   password_hash: string;
+  current_password_display?: string;
   role: UserRole;
   status: EntityStatus;
   email?: string;

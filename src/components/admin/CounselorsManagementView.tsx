@@ -20,6 +20,10 @@ import {
   X,
   Sparkles,
   Search,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { CounselorAssignment, CounselorScope, Department, AcademicYear, Section, User } from '@/types';
 import { store } from '@/lib/storage/store';
@@ -74,6 +78,8 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
 
   // Reset password states
   const [resetPasswordVal, setResetPasswordVal] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [copiedPass, setCopiedPass] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -446,6 +452,8 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                           onClick={() => {
                             setErrorMsg(null);
                             setResetPasswordVal('');
+                            setShowCurrentPass(false);
+                            setCopiedPass(false);
                             setShowResetModal(user);
                           }}
                           title="Reset Password"
@@ -956,6 +964,8 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                 onClick={() => {
                   setShowResetModal(null);
                   setResetPasswordVal('');
+                  setShowCurrentPass(false);
+                  setCopiedPass(false);
                 }}
                 className="text-slate-400 hover:text-slate-600"
               >
@@ -965,19 +975,82 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
 
             <form onSubmit={handleResetPassword} className="space-y-4 mt-4 text-xs">
               <p className="text-slate-600">
-                Set a new password for{' '}
-                <strong className="text-slate-900">{showResetModal.username}</strong> ({showResetModal.name}):
+                Credentials for <strong className="text-slate-900">{showResetModal.username}</strong> ({showResetModal.name}):
               </p>
 
+              {/* CURRENT PASSWORD DISPLAY CARD */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                    Current Password
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="text-[11px] text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium cursor-pointer"
+                      title={showCurrentPass ? 'Hide password' : 'Show password'}
+                    >
+                      {showCurrentPass ? (
+                        <>
+                          <EyeOff className="w-3.5 h-3.5" />
+                          <span>Hide</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Show</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const passToCopy = showResetModal.current_password_display || 'change-me-immediately';
+                        navigator.clipboard.writeText(passToCopy);
+                        setCopiedPass(true);
+                        setTimeout(() => setCopiedPass(false), 2000);
+                      }}
+                      className="text-[11px] text-slate-600 hover:text-slate-900 flex items-center gap-1 font-medium cursor-pointer"
+                      title="Copy current password"
+                    >
+                      {copiedPass ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-600 font-semibold">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="font-mono text-xs text-slate-900 font-semibold bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 select-all flex items-center justify-between">
+                    <span>
+                      {showCurrentPass
+                        ? (showResetModal.current_password_display || 'change-me-immediately')
+                        : '••••••••••••••••'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-sans font-normal">Active</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* NEW PASSWORD INPUT */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">New Password</label>
+                <label className="block font-semibold text-slate-700 mb-1">Set New Password</label>
                 <input
                   type="text"
                   required
                   placeholder="Enter new password (min 4 characters)..."
                   value={resetPasswordVal}
                   onChange={(e) => setResetPasswordVal(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono outline-none focus:ring-2 focus:ring-amber-500 text-slate-900"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 bg-white"
                 />
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-[10px] text-slate-400">Encrypted with PBKDF2</span>
@@ -987,7 +1060,7 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                       const randomPass = 'Pass_' + Math.random().toString(36).slice(-6) + '!';
                       setResetPasswordVal(randomPass);
                     }}
-                    className="text-[10px] text-blue-600 hover:underline font-semibold"
+                    className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
                   >
                     Generate Random
                   </button>
@@ -1000,15 +1073,17 @@ export const CounselorsManagementView: React.FC<CounselorsManagementViewProps> =
                   onClick={() => {
                     setShowResetModal(null);
                     setResetPasswordVal('');
+                    setShowCurrentPass(false);
+                    setCopiedPass(false);
                   }}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!resetPasswordVal.trim()}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold disabled:opacity-50"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold disabled:opacity-50 cursor-pointer"
                 >
                   Update Password
                 </button>

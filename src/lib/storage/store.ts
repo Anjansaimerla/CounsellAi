@@ -266,6 +266,7 @@ export class CounsellStore {
       name: 'Institutional Administrator',
       username: 'admin',
       password_hash: defaultPasswordHash,
+      current_password_display: 'change-me-immediately',
       role: 'ADMIN',
       status: 'ACTIVE',
       email: 'admin@institution.edu',
@@ -278,6 +279,7 @@ export class CounsellStore {
       name: 'Dr. Ravi Kumar',
       username: 'counselor.cse2d',
       password_hash: defaultPasswordHash,
+      current_password_display: 'change-me-immediately',
       role: 'COUNSELLOR',
       status: 'ACTIVE',
       email: 'ravi.kumar@institution.edu',
@@ -290,6 +292,7 @@ export class CounsellStore {
       name: 'Prof. Ananya Sharma',
       username: 'counselor2.cse2d',
       password_hash: defaultPasswordHash,
+      current_password_display: 'change-me-immediately',
       role: 'COUNSELLOR',
       status: 'ACTIVE',
       email: 'ananya.sharma@institution.edu',
@@ -302,6 +305,7 @@ export class CounsellStore {
       name: 'Dr. Vikram Patel',
       username: 'counselor.ece3a',
       password_hash: defaultPasswordHash,
+      current_password_display: 'change-me-immediately',
       role: 'COUNSELLOR',
       status: 'ACTIVE',
       email: 'vikram.patel@institution.edu',
@@ -683,6 +687,7 @@ export class CounsellStore {
       name: params.name,
       username: params.username,
       password_hash: hashedPassword,
+      current_password_display: params.passwordPlain.trim(),
       role: params.role,
       status: 'ACTIVE',
       email: params.email,
@@ -808,6 +813,7 @@ export class CounsellStore {
     const user = this.users.get(userId);
     if (!user) return false;
     user.password_hash = await hashPassword(newPasswordPlain.trim());
+    user.current_password_display = newPasswordPlain.trim();
     user.updated_at = new Date().toISOString();
 
     this.recordAuditLog({
@@ -842,6 +848,7 @@ export class CounsellStore {
     }
 
     user.password_hash = await hashPassword(newPasswordPlain.trim());
+    user.current_password_display = newPasswordPlain.trim();
     user.updated_at = new Date().toISOString();
 
     this.recordAuditLog({
@@ -888,7 +895,8 @@ export class CounsellStore {
     if (params.role) user.role = params.role;
     if (params.status) user.status = params.status;
     if (params.passwordPlain) {
-      user.password_hash = await hashPassword(params.passwordPlain);
+      user.password_hash = await hashPassword(params.passwordPlain.trim());
+      user.current_password_display = params.passwordPlain.trim();
     }
     user.updated_at = new Date().toISOString();
 
