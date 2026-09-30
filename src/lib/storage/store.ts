@@ -995,8 +995,21 @@ export class CounsellStore {
     return true;
   }
 
+  public getDepartmentById(id: string): Department | undefined {
+    return this.departments.get(id);
+  }
+
+  public getDepartmentByCode(code: string): Department | undefined {
+    const upper = code.toUpperCase();
+    return Array.from(this.departments.values()).find((d) => d.code === upper);
+  }
+
   public getYears(): AcademicYear[] {
     return Array.from(this.years.values()).sort((a, b) => a.year_number - b.year_number);
+  }
+
+  public getYearById(id: string): AcademicYear | undefined {
+    return this.years.get(id);
   }
 
   public addYear(name: string, yearNumber: number, graduationYear: number, adminUser: User): AcademicYear {
@@ -1091,6 +1104,10 @@ export class CounsellStore {
 
   public getSections(): Section[] {
     return Array.from(this.sections.values());
+  }
+
+  public getSectionById(id: string): Section | undefined {
+    return this.sections.get(id);
   }
 
   public addSection(departmentId: string, yearId: string, name: string, adminUser: User): Section {
