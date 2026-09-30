@@ -85,13 +85,17 @@ export class AuthService {
 
   private loadSession() {
     try {
-      const data = localStorage.getItem(SESSION_STORAGE_KEY);
+      // Clean up any legacy localStorage session to prevent automatic admin bypass
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+      const data = sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (data) {
         const parsed: AuthSession = JSON.parse(data);
         if (Date.now() < parsed.expiresAt) {
           this.currentSession = parsed;
         } else {
-          localStorage.removeItem(SESSION_STORAGE_KEY);
+          sessionStorage.removeItem(SESSION_STORAGE_KEY);
           this.currentSession = null;
         }
       }
@@ -103,10 +107,13 @@ export class AuthService {
 
   private saveSession(session: AuthSession | null) {
     if (typeof window === 'undefined') return;
+    // Always ensure localStorage has no lingering session
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+
     if (session) {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     } else {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
     }
     this.currentSession = session;
     this.notify();
