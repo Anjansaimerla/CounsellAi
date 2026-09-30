@@ -4,15 +4,10 @@ import React, { useState } from 'react';
 import {
   GraduationCap,
   ShieldCheck,
-  UserCheck,
   Lock,
   User,
   ArrowRight,
   AlertCircle,
-  KeyRound,
-  Sparkles,
-  Building2,
-  Users2,
 } from 'lucide-react';
 import { authService, AuthSession } from '@/lib/auth/auth-service';
 import { store } from '@/lib/storage/store';
@@ -78,49 +73,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(session);
     } catch (err: any) {
       setErrorMsg(err.message || 'Authentication failed.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (presetUser: string, presetPass: string) => {
-    setUsername(presetUser);
-    setPassword(presetPass);
-    setIsLoading(true);
-    setErrorMsg(null);
-
-    try {
-      const res = await store.authenticateUser(presetUser, presetPass);
-      if (res) {
-        const session: AuthSession = {
-          user: {
-            id: res.user.id,
-            name: res.user.name,
-            username: res.user.username,
-            role: res.user.role,
-            status: res.user.status,
-            email: res.user.email,
-          },
-          scope: res.scope,
-          token: `session_${res.user.id}_${Date.now()}`,
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-        };
-        authService.setSession(session);
-        store.recordAuditLog({
-          user_id: res.user.id,
-          username: res.user.username,
-          user_role: res.user.role,
-          action: 'LOGIN',
-          entity_type: 'AUTH',
-          metadata: { role: res.user.role, scope: res.scope ? `${res.scope.department_code}_${res.scope.section_name}` : 'GLOBAL' },
-        });
-        onLoginSuccess(session);
-      } else {
-        setPassword('');
-        setErrorMsg(`Username '${presetUser}' selected. Since this password was updated from default, please enter your new password above.`);
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Quick login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -207,7 +159,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full mt-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -219,121 +171,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Switcher Section */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                Quick Demo Switcher
-              </span>
-              <span className="text-[10px] text-slate-500">One-click login</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {/* Admin Demo Button */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin', 'change-me-immediately')}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center text-xs font-bold border border-purple-500/30">
-                    AD
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white group-hover:text-blue-400 transition-colors">
-                      Administrator (admin)
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      Institution-wide Full Control & Configuration
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-medium border border-purple-500/30">
-                  ADMIN
-                </span>
-              </button>
-
-              {/* Counselor A (CSE 2D) */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('counselor.cse2d', 'change-me-immediately')}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center text-xs font-bold border border-blue-500/30">
-                    C1
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white group-hover:text-blue-400 transition-colors">
-                      Dr. Ravi Kumar (counselor.cse2d)
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      CSE • Year 2 • Section D (Counselor 1 of 2)
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30">
-                  CSE 2-D
-                </span>
-              </button>
-
-              {/* Counselor B (CSE 2D) */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('counselor2.cse2d', 'change-me-immediately')}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-bold border border-teal-500/30">
-                    C2
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white group-hover:text-teal-400 transition-colors">
-                      Prof. Ananya Sharma (counselor2.cse2d)
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      CSE • Year 2 • Section D (Counselor 2 of 2 - Shared Scope)
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-medium border border-teal-500/30">
-                  CSE 2-D
-                </span>
-              </button>
-
-              {/* Counselor C (ECE 3A) */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('counselor.ece3a', 'change-me-immediately')}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs font-bold border border-amber-500/30">
-                    C3
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white group-hover:text-amber-400 transition-colors">
-                      Dr. Vikram Patel (counselor.ece3a)
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      ECE • Year 3 • Section A (Separate Department Scope)
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30">
-                  ECE 3-A
-                </span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Security Footer Notice */}
         <div className="mt-6 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Backend enforces scope isolation. Zero client-side permission trust.</span>
+          <span>Institutional RBAC & Scope Isolation Active</span>
         </div>
       </div>
     </div>
