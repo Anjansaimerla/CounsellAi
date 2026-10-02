@@ -44,13 +44,13 @@ export const YearsManagementView: React.FC<YearsManagementViewProps> = ({
     const computedGradYear = currentCalendarYear + (4 - nextNum);
     setYearNum(nextNum);
     setGradYear(computedGradYear);
-    setYearName(`${computedGradYear} (Year ${nextNum})`);
+    setYearName(`${computedGradYear} Batch`);
     setShowAddModal(true);
   };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalName = yearName || `${gradYear} (Year ${yearNum})`;
+    const finalName = yearName || `${gradYear} Batch`;
     store.addYear(finalName, Number(yearNum), Number(gradYear), currentUser);
     setSuccessMsg(`Academic Year '${finalName}' created successfully.`);
     setShowAddModal(false);
@@ -68,7 +68,7 @@ export const YearsManagementView: React.FC<YearsManagementViewProps> = ({
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editYear) return;
-    const finalName = yearName || `${gradYear} (Year ${yearNum})`;
+    const finalName = yearName || `${gradYear} Batch`;
     const success = store.updateYear(
       editYear.id,
       finalName,
@@ -233,7 +233,9 @@ export const YearsManagementView: React.FC<YearsManagementViewProps> = ({
                   onChange={(e) => {
                     const g = parseInt(e.target.value, 10) || currentCalendarYear;
                     setGradYear(g);
-                    setYearName(`${g} (Year ${yearNum})`);
+                    const calcYear = Math.max(1, Math.min(6, 4 - (g - currentCalendarYear)));
+                    setYearNum(calcYear >= 1 && calcYear <= 6 ? calcYear : (years.length + 1));
+                    setYearName(`${g} Batch`);
                   }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono font-semibold"
                 />
@@ -243,30 +245,13 @@ export const YearsManagementView: React.FC<YearsManagementViewProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Year Level (1-6)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="6"
-                  required
-                  value={yearNum}
-                  onChange={(e) => {
-                    const num = parseInt(e.target.value, 10) || 1;
-                    setYearNum(num);
-                    setYearName(`${gradYear} (Year ${num})`);
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
                 <label className="block font-semibold text-slate-700 mb-1">Display Label</label>
                 <input
                   type="text"
                   required
                   value={yearName}
                   onChange={(e) => setYearName(e.target.value)}
-                  placeholder="e.g. 2028 (Year 2)"
+                  placeholder="e.g. 2028 Batch or Class of 2028"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -314,21 +299,10 @@ export const YearsManagementView: React.FC<YearsManagementViewProps> = ({
                   onChange={(e) => {
                     const g = parseInt(e.target.value, 10) || currentCalendarYear;
                     setGradYear(g);
+                    const calcYear = Math.max(1, Math.min(6, 4 - (g - currentCalendarYear)));
+                    setYearNum(calcYear >= 1 && calcYear <= 6 ? calcYear : yearNum);
                   }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Year Level</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="6"
-                  required
-                  value={yearNum}
-                  onChange={(e) => setYearNum(parseInt(e.target.value, 10) || 1)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
